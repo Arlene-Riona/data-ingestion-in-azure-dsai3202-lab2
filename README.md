@@ -137,6 +137,8 @@ Pipeline structure:
 3. Write Gold dataset
 
 Each task depends on the previous one, ensuring the correct execution order. The job can be triggered manually or scheduled.
+
+
 <img width="450" height="450" alt="image" src="https://github.com/user-attachments/assets/06700c6a-44af-46bd-b1dd-14b2cde6fa80" />
 <img width="450" height="450" alt="image" src="https://github.com/user-attachments/assets/47170b2b-c525-408d-9d51-be68d6b5baee" />
 <img width="450" height="450" alt="image" src="https://github.com/user-attachments/assets/babca64b-7835-4bbc-9f10-9be2d348356a" />
