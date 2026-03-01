@@ -1,0 +1,8 @@
+name: sbert-env
+dependencies:
+  - python=3.8
+  - pip
+  - pip:
+      - pandas
+      - pyarrow
+      - sentence-transformers

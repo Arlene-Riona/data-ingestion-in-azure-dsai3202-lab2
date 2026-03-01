@@ -1,0 +1,23 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+
+name: review_length_component
+display_name: Review Length Feature Component
+version: "1"
+type: command
+
+inputs:
+  input_data:
+    type: uri_file
+
+outputs:
+  output_data:
+    type: uri_file
+
+code: .
+
+command: >
+  python review_length.py
+  --input_path ${{inputs.input_data}}
+  --output_path ${{outputs.output_data}}
+
+environment: azureml://registries/azureml/environments/sklearn-1.0/labels/latest

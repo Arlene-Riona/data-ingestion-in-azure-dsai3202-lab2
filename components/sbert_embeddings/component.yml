@@ -1,0 +1,29 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+
+name: sbert_embeddings
+display_name: SBERT Embeddings
+version: 1
+type: command
+
+inputs:
+  data:
+    type: uri_folder
+  text_column:
+    type: string
+    default: reviewText
+
+outputs:
+  out:
+    type: uri_folder
+
+code: .
+
+command: >
+  python sbert.py
+  --data ${{inputs.data}}
+  --out ${{outputs.out}}
+  --text_column ${{inputs.text_column}}
+
+environment:
+  conda_file: conda.yml
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
