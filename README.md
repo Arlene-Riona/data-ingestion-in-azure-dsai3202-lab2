@@ -28,20 +28,20 @@ Key checks performed:
 
 Two visualizations were created to better understand the data distribution before engineering features.
 
-**Rating Distribution** — Shows how reviews are distributed across star ratings (1–5). This matters because an imbalanced rating distribution can affect how sentiment and TF-IDF features behave, and may require stratified sampling.
+**Rating Distribution**: Shows how reviews are distributed across star ratings (1–5). This matters because an imbalanced rating distribution can affect how sentiment and TF-IDF features behave, and may require stratified sampling.
 
 <img width="758" height="583" alt="image" src="https://github.com/user-attachments/assets/f478c3c2-b617-4e86-95bb-4d66baaa193b" />
 
 
 
-**Review Length Distribution** — Shows how long reviews are in terms of word count and character count. This matters because very short reviews carry little signal, and extremely long reviews may dominate TF-IDF vocabulary. It helps justify filtering reviews shorter than 10 characters.
+**Review Length Distribution**: Shows how long reviews are in terms of word count and character count. This matters because very short reviews carry little signal, and extremely long reviews may dominate TF-IDF vocabulary. It helps justify filtering reviews shorter than 10 characters.
 
 <img width="727" height="557" alt="image" src="https://github.com/user-attachments/assets/150d72d4-0eb0-4b2f-8de9-32f6026c9018" />
 
 
 ---
 
-**Average Review Length per Rating** *(Bonus Visualization)* — Shows the average word count of reviews grouped by star rating. Reviews with ratings 2, 3, and 4 are notably longer on average, while 5-star reviews are the shortest. This suggests that users giving moderate ratings tend to write more detailed explanations, whereas highly positive reviewers are more concise. This is directly relevant to feature engineering because it confirms that review length carries predictive information about the rating class, justifying the inclusion of `review_length_words` and `review_length_chars` as features.
+**Average Review Length per Rating**: Shows the average word count of reviews grouped by star rating. Reviews with ratings 2, 3, and 4 are notably longer on average, while 5-star reviews are the shortest. This suggests that users giving moderate ratings tend to write more detailed explanations, whereas highly positive reviewers are more concise. This is directly relevant to feature engineering because it confirms that review length carries predictive information about the rating class, justifying the inclusion of `review_length_words` and `review_length_chars` as features.
 
 <img width="749" height="598" alt="image" src="https://github.com/user-attachments/assets/6d2a67b8-3834-4232-b2d6-6e65fde81882" />
 
