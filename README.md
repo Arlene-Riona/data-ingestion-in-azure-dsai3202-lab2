@@ -1,52 +1,179 @@
-# Data Ingestion Pipeline on Azure - Lab 2
+# Assignment 1 – Text Feature Engineering with Azure ML
 
-Name: Arlene Riona
+## Overview
 
-Student ID: 60304739
+This lab transforms raw Amazon Electronics review text into numerical machine learning features using Azure ML Pipelines. Raw text cannot be used directly by ML models so it must be converted into structured numerical representations. The pipeline is built using modular Azure ML command components, each responsible for one clearly defined step, and the final output is registered in the Azure ML Feature Store for reuse in future modeling labs.
 
-1 - An Azure Storage Account is created to be our data lake from the Azure portal. In the storage account, 3 containers called raw, processed and curated was created. After this the product metadata dataset was uploaded to the raw container. 
+---
 
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/0dae1bca-acce-4778-ab73-15d9adcb2764" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/37066dc4-33b5-4d1d-a6e7-11ab5a2be50c" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/9997eb8d-6dac-46e0-a372-c1ac6844b547" />
+## Part I – Data Exploration and Validation
 
-#
-2 - We then needed to create a compute instance in the Azure machine learning studio. Then we need to download the electronics reviews dataset using the terminal in the compute instance. Once this is done, we need to upload the dataset to azure blob storage using SAS token. 
+### 1. Loading and Inspecting the Dataset
 
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/f70f40b5-f65c-45a1-b36f-568efa6f3ce5" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/0a77d410-f5b1-4237-abd7-c6eea5cc5578" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/8e3ffaa1-f1a6-45d7-be20-bae88c132545" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/9b7fd142-5411-4232-b8d7-3f24b61b56cb" />
+The curated Gold dataset (`features_v1`) was loaded from Azure Data Lake Storage into a Databricks notebook. The dataset was inspected to verify its schema, number of rows and columns, and data types. This step ensures the data is clean and suitable for feature engineering before any transformations are applied.
 
-#
-3 - To create the SAS token, we need to go to shared access signature under azure data lake storage account. After this we upload the uncompressed json file (the electronics review dataset) to azure blob storage. After this, we fix the json file since it's not a valid json file using a python script and upload back the fixed json file to the blob storage.
+Key checks performed:
+- Number of rows and columns
+- Column data types (e.g. `reviewText` is string, `overall` is numeric)
+- Presence of required identifier columns (`asin`, `reviewerID`)
+- Missing or empty values in key columns
 
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/952718a6-8458-420e-ba13-44b4a6158826" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/5576c1b5-6bfb-47c1-9eb5-f2ad7e6c230b" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/63810ce7-534c-4386-a680-74f0e16f9120" />
+<img width="940" height="849" alt="image" src="https://github.com/user-attachments/assets/ccab34f4-dd9d-48ac-805c-1391450fa392" />
+<img width="940" height="897" alt="image" src="https://github.com/user-attachments/assets/e4d6461a-8839-480b-bee2-bd9f03f44e87" />
 
-#
-4 - We built an automated ingestion pipeline in azure data factory that takes the amazon electronics reviews json file from the storage account to the processed zone in parquet format. To do this, we need to create an ADF instance. Once this is done, we need to create a linked service to our storage account.
 
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/48e4c3ee-0e8f-4f8d-9836-f680930ca341" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/256d9272-51a6-437a-ac8e-d029ee477036" />
+---
 
-#
-5 - After the above step, we need to create the source dataset and sink dataset. We can then make a mapping data fow for the raw json reviews and make a derived column to convert the unix timestamp into a calendar year that can be used for partitioning. We can then configure the sink dataset to create a full data flow.
+### 2. Visualizations
 
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/571a257d-e902-466e-9544-409b4727693c" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/b8b3c9b3-47aa-4011-8115-e421ec5b78cf" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/f4433b8d-db9c-4f4d-b1e9-53ae1a200810" />
+Two visualizations were created to better understand the data distribution before engineering features.
 
-#
-6 - Now we need to create a pipeline to connect the data flow. The output of the pipline is then stored in the processed container.
+**Rating Distribution** — Shows how reviews are distributed across star ratings (1–5). This matters because an imbalanced rating distribution can affect how sentiment and TF-IDF features behave, and may require stratified sampling.
 
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/e4c961b2-02ea-431b-b1c3-37db6b6e90c3" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/b280127c-7b00-461b-a382-d956b9ba0280" />
+<img width="758" height="583" alt="image" src="https://github.com/user-attachments/assets/f478c3c2-b617-4e86-95bb-4d66baaa193b" />
 
-#
-7 - To automate the pipeline, we added a triger than automatically runs on a daily basis.
 
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/4142d3ae-a2c7-4094-a769-878e3c2aceae" />
 
-#
+**Review Length Distribution** — Shows how long reviews are in terms of word count and character count. This matters because very short reviews carry little signal, and extremely long reviews may dominate TF-IDF vocabulary. It helps justify filtering reviews shorter than 10 characters.
+
+<img width="727" height="557" alt="image" src="https://github.com/user-attachments/assets/150d72d4-0eb0-4b2f-8de9-32f6026c9018" />
+
+
+---
+
+**Average Review Length per Rating** *(Bonus Visualization)* — Shows the average word count of reviews grouped by star rating. Reviews with ratings 2, 3, and 4 are notably longer on average, while 5-star reviews are the shortest. This suggests that users giving moderate ratings tend to write more detailed explanations, whereas highly positive reviewers are more concise. This is directly relevant to feature engineering because it confirms that review length carries predictive information about the rating class, justifying the inclusion of `review_length_words` and `review_length_chars` as features.
+
+<img width="749" height="598" alt="image" src="https://github.com/user-attachments/assets/6d2a67b8-3834-4232-b2d6-6e65fde81882" />
+
+
+---
+
+### 3. Creating a Sampled Dataset
+
+The full dataset contains over 20 million reviews, which is too large for transformer-based feature extraction (e.g. SBERT). A sample of 300,000 reviews was created and written back to the Gold layer as `features_v1_sampled`, leaving the original dataset unchanged.
+
+Sampling was done by ordering reviews by `reviewerID` to ensure resistance to temporal drift, this way the sample covers a diverse range of reviewers rather than being biased toward a specific time period.
+
+A sanity check was performed to confirm the rating distribution of the sample roughly matched the original dataset.
+
+<img width="940" height="1076" alt="image" src="https://github.com/user-attachments/assets/86b77eef-560a-4f55-b4f3-2a866f2febb2" />
+<img width="940" height="1038" alt="image" src="https://github.com/user-attachments/assets/85871c5f-d00b-4a1f-81d7-9b0c3c2360b4" />
+
+
+---
+
+## Part II – Azure ML Feature Engineering Pipeline
+
+### 4. Registering the Datastore and Data Asset
+
+Azure ML was given access to the curated Azure Data Lake container by registering a datastore using a storage account key. The sampled dataset was then registered as an Azure ML Data Asset so it could be consumed by the pipeline. This is necessary because Azure ML pipelines do not read directly from Databricks or ADLS, all inputs must go through registered data assets.
+
+<img width="940" height="461" alt="image" src="https://github.com/user-attachments/assets/87b0441b-24c7-4641-aedf-af0fc124d065" />
+
+
+---
+
+### 5. Creating the Feature Store Entity
+
+A Feature Store was created in Azure ML and an entity called `AmazonReview` was registered with index columns `asin` and `reviewerID`. The entity defines what uniquely identifies each review record, which is required before any feature sets can be registered against it.
+
+<img width="940" height="381" alt="image" src="https://github.com/user-attachments/assets/4a49e04e-73d0-4f31-a0bc-53269733bca1" />
+
+
+---
+
+### 6. Azure ML Pipeline Components
+
+The feature engineering logic was split into modular command components. Each component does exactly one job, which makes the pipeline easy to debug, reuse, and version independently.
+
+#### Split Dataset
+The dataset is split into train (70%), validation (15%), and test (15%) sets before any feature extraction. This is critical to **prevent data leakage**, if TF-IDF or any other feature is fitted on the full dataset before splitting, information from the validation and test sets would leak into the training features, making model evaluation unreliable.
+
+<img width="910" height="1064" alt="image" src="https://github.com/user-attachments/assets/25e15655-76f6-4191-aa69-649d944ae915" />
+
+
+---
+
+#### Normalize Review Text
+Review text is normalized before feature extraction to ensure consistency across all splits. This includes lowercasing, removing punctuation, replacing URLs and numbers with tokens (`URL`, `NUMBER`), and filtering out reviews shorter than 10 characters. Without normalization, the same word in different forms (e.g. "Great!" vs "great") would be treated as different tokens, reducing feature quality.
+
+
+---
+
+#### Review Length Features
+Two simple numerical features are computed from the raw text:
+- `review_length_words` — number of words in the review
+- `review_length_chars` — number of characters in the review
+
+These features capture how much a reviewer wrote, which can correlate with engagement level and review quality. They are simple but often informative for downstream models.
+
+<img width="940" height="392" alt="image" src="https://github.com/user-attachments/assets/9ee2b365-fe39-41b3-9063-bc1c2a4efb7d" />
+
+
+---
+
+#### Sentiment Features
+Sentiment scores are extracted using VADER (`nltk.sentiment.SentimentIntensityAnalyzer`), producing four features:
+- `sentiment_pos` — proportion of positive words
+- `sentiment_neg` — proportion of negative words
+- `sentiment_neu` — proportion of neutral words
+- `sentiment_compound` — overall polarity score (−1 to +1)
+
+Sentiment captures the emotional tone of a review, which is directly related to the star rating. These features give the model an explicit signal about opinion polarity without needing to learn it purely from raw text.
+
+<img width="940" height="400" alt="image" src="https://github.com/user-attachments/assets/95e21538-32d3-4d39-a59c-7500b6ab618a" />
+
+
+---
+
+#### TF-IDF Features
+TF-IDF (Term Frequency–Inverse Document Frequency) converts review text into a numerical matrix representing the importance of each word or phrase. Settings used:
+- `max_features=500` — keeps vocabulary manageable
+- `stop_words='english'` — removes common filler words
+- `ngram_range=(1,2)` — captures single words and two-word phrases (e.g. "not good")
+
+**Important:** The TF-IDF vectorizer is fitted only on the training split, then applied (transformed) to the validation and test splits. This prevents any information from the validation/test vocabulary from influencing the feature representation.
+
+
+---
+
+#### SBERT Semantic Embeddings
+Sentence-BERT (`all-MiniLM-L6-v2`) generates dense 384-dimensional vector embeddings for each review. Unlike TF-IDF which treats words independently, SBERT captures semantic meaning — reviews that mean the same thing will have similar embeddings even if they use different words. This significantly improves a model's ability to understand nuance and context.
+
+
+---
+
+#### Merge All Features
+All feature outputs are merged into a single dataset by joining on the entity keys (`asin`, `reviewerID`). This produces one unified Parquet file containing all engineered features, which is used to register the Feature Set in the Azure ML Feature Store and will be the input to future modeling labs.
+
+
+---
+
+### 7. Running the Pipeline
+
+All components were wired together in `pipelines/feature_pipeline.yml` and submitted to the Azure ML compute cluster. The pipeline runs entirely on Azure ML compute, not locally, and each step is tracked and versioned automatically.
+
+<img width="1470" height="178" alt="image" src="https://github.com/user-attachments/assets/a8b179ce-873e-437e-8421-54e967efe655" />
+
+
+---
+
+### 8. Registering the Feature Set
+
+After the pipeline completed successfully, the output of the `merge_all` step was used to register a versioned Feature Set in the Azure ML Feature Store. This makes the engineered features reusable and consistently accessible for downstream modeling pipelines without needing to re-run feature engineering from scratch.
+
+
+---
+
+## Summary of Features Engineered
+
+| Feature | Description |
+|---|---|
+| `review_length_words` | Number of words in review |
+| `review_length_chars` | Number of characters in review |
+| `sentiment_pos` | Proportion of positive sentiment words |
+| `sentiment_neg` | Proportion of negative sentiment words |
+| `sentiment_neu` | Proportion of neutral sentiment words |
+| `sentiment_compound` | Overall polarity score (−1 to +1) |
+| `tfidf_0` … `tfidf_499` | TF-IDF word/phrase importance scores |
+| `bert_embedding` | 384-dimensional SBERT semantic vector |
