@@ -2,8 +2,9 @@ $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.jso
 
 name: sbert_embeddings
 display_name: SBERT Embeddings
-version: 10
+version: 13
 type: command
+is_deterministic: false
 
 inputs:
   data:
@@ -11,6 +12,9 @@ inputs:
   text_column:
     type: string
     default: reviewText
+  pca_components:
+    type: integer
+    default: 64
 
 outputs:
   out:
@@ -23,6 +27,7 @@ command: >
   --data ${{inputs.data}}
   --out ${{outputs.out}}
   --text_column ${{inputs.text_column}}
+  --pca_components ${{inputs.pca_components}}
 
 environment:
   conda_file: conda.yml

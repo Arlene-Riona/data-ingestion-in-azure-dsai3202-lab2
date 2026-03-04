@@ -2,8 +2,9 @@ $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.jso
 
 name: sentiment_feature_component
 display_name: Sentiment Feature Component
-version: 11
+version: 12
 type: command
+is_deterministic: false
 
 inputs:
   input_data:

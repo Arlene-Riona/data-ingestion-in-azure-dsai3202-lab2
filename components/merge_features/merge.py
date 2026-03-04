@@ -3,22 +3,46 @@ import os
 import pandas as pd
 
 KEYS = ["asin", "reviewerID"]
+CHUNK_SIZE = 50_000
 
-def read_df(folder_path: str) -> pd.DataFrame:
-    # Option B: Look for any .parquet file in the folder
-    files = [f for f in os.listdir(folder_path) if f.endswith('.parquet')]
+
+def read_first_parquet(folder_path: str) -> pd.DataFrame:
+    files = [f for f in os.listdir(folder_path) if f.endswith(".parquet")]
     if not files:
-        raise FileNotFoundError(f"No parquet file found in {folder_path}")
-    
-    # Pick the first parquet file found
+        raise FileNotFoundError(f"No parquet files found in {folder_path}")
     file_path = os.path.join(folder_path, files[0])
-    print(f"Reading features from: {file_path}")
+    print(f"Reading: {file_path}")
     return pd.read_parquet(file_path)
 
-def write_df(df: pd.DataFrame, out_folder: str):
-    os.makedirs(out_folder, exist_ok=True)
-    # We'll save the final merged output as data.parquet for consistency
-    df.to_parquet(os.path.join(out_folder, "data.parquet"), index=False)
+
+def downcast(df: pd.DataFrame) -> pd.DataFrame:
+    for col in df.select_dtypes(include=["float64"]).columns:
+        df[col] = df[col].astype("float32")
+    for col in df.select_dtypes(include=["int64"]).columns:
+        df[col] = df[col].astype("int32")
+    return df
+
+
+def make_unique(df: pd.DataFrame, name: str) -> pd.DataFrame:
+    """
+    Ensure KEYS uniquely identify rows.
+    If duplicates exist, keep the last occurrence.
+    """
+    before = len(df)
+    dup_count = df.duplicated(subset=KEYS).sum()
+    if dup_count > 0:
+        print(f"{name}: found {dup_count} duplicate keys. Deduplicating (keep='last')...")
+        df = df.drop_duplicates(subset=KEYS, keep="last")
+    after = len(df)
+    print(f"{name}: rows {before} -> {after}")
+    return df
+
+
+def prep(df: pd.DataFrame, name: str) -> pd.DataFrame:
+    df = downcast(df)
+    df = make_unique(df, name)
+    return df.set_index(KEYS).sort_index()
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -29,23 +53,85 @@ def main():
     parser.add_argument("--out", type=str, required=True)
     args = parser.parse_args()
 
-    # These will now find 'review_length_features.parquet' OR 'data.parquet' automatically
-    length_df = read_df(args.length)
-    sentiment_df = read_df(args.sentiment)
-    tfidf_df = read_df(args.tfidf)
-    sbert_df = read_df(args.sbert)
+    os.makedirs(args.out, exist_ok=True)
 
-    # Merge all feature sets on entity keys
-    merged = (
-        length_df
-        .merge(sentiment_df, on=KEYS, how="inner")
-        .merge(tfidf_df, on=KEYS, how="inner")
-        .merge(sbert_df, on=KEYS, how="inner")
-    )
+    print("Loading + preparing dataframes...")
+    length_df = prep(read_first_parquet(args.length), "length")
+    sentiment_df = prep(read_first_parquet(args.sentiment), "sentiment")
+    tfidf_df = prep(read_first_parquet(args.tfidf), "tfidf")
+    sbert_df = prep(read_first_parquet(args.sbert), "sbert")
 
-    write_df(merged, args.out)
+    # Drive merge by length_df rows
+    total = len(length_df)
+    print(f"Total rows (length): {total} | chunk size: {CHUNK_SIZE}")
 
-    print("Final merged dataset shape:", merged.shape)
+    out_file = os.path.join(args.out, "data.parquet")
+
+    # Streaming parquet writer (preferred)
+    try:
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        writer = None
+        part = 0
+
+        for start in range(0, total, CHUNK_SIZE):
+            end = min(start + CHUNK_SIZE, total)
+            base = length_df.iloc[start:end]
+            idx = base.index
+
+            # IMPORTANT: use .loc instead of reindex (because now indices are unique)
+            merged = (
+                base
+                .join(sentiment_df.loc[idx], how="inner")
+                .join(sbert_df.loc[idx], how="inner")
+                .join(tfidf_df.loc[idx], how="inner")
+                .reset_index()
+            )
+
+            table = pa.Table.from_pandas(merged, preserve_index=False)
+
+            if writer is None:
+                writer = pq.ParquetWriter(out_file, table.schema)
+
+            writer.write_table(table)
+            print(f"Wrote chunk {part} | rows {start}..{end} | shape={merged.shape}")
+
+            del base, merged, table
+            part += 1
+
+        if writer is not None:
+            writer.close()
+
+        print(f"Final output written: {out_file}")
+
+    except Exception as e:
+        print(f"pyarrow streaming not available ({e}). Falling back to part files...")
+        part_dir = os.path.join(args.out, "parts")
+        os.makedirs(part_dir, exist_ok=True)
+
+        part = 0
+        for start in range(0, total, CHUNK_SIZE):
+            end = min(start + CHUNK_SIZE, total)
+            base = length_df.iloc[start:end]
+            idx = base.index
+
+            merged = (
+                base
+                .join(sentiment_df.loc[idx], how="inner")
+                .join(sbert_df.loc[idx], how="inner")
+                .join(tfidf_df.loc[idx], how="inner")
+                .reset_index()
+            )
+
+            merged.to_parquet(os.path.join(part_dir, f"part-{part:05d}.parquet"), index=False)
+            print(f"Wrote part {part} | rows {start}..{end} | shape={merged.shape}")
+
+            del base, merged
+            part += 1
+
+        print(f"Output written as parts: {part_dir}")
+
 
 if __name__ == "__main__":
     main()
