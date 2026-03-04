@@ -140,6 +140,7 @@ TF-IDF (Term Frequency–Inverse Document Frequency) converts review text into a
 #### SBERT Semantic Embeddings
 Sentence-BERT (`all-MiniLM-L6-v2`) generates dense 384-dimensional vector embeddings for each review. Unlike TF-IDF which treats words independently, SBERT captures semantic meaning — reviews that mean the same thing will have similar embeddings even if they use different words. This significantly improves a model's ability to understand nuance and context.
 
+<img width="1436" height="562" alt="image" src="https://github.com/user-attachments/assets/872cb1cd-9531-4d2c-9125-afecd149a530" />
 
 ---
 
@@ -153,7 +154,9 @@ All feature outputs are merged into a single dataset by joining on the entity ke
 
 All components were wired together in `pipelines/feature_pipeline.yml` and submitted to the Azure ML compute cluster. The pipeline runs entirely on Azure ML compute, not locally, and each step is tracked and versioned automatically.
 
-<img width="1470" height="178" alt="image" src="https://github.com/user-attachments/assets/a8b179ce-873e-437e-8421-54e967efe655" />
+<img width="1396" height="500" alt="image" src="https://github.com/user-attachments/assets/c2b75fad-3e2d-4a1a-b877-eea007cf7687" />
+<img width="1525" height="640" alt="image" src="https://github.com/user-attachments/assets/1fdc0ece-a274-4007-bdee-f1c658a9c25d" />
+
 
 
 ---
@@ -161,6 +164,8 @@ All components were wired together in `pipelines/feature_pipeline.yml` and submi
 ### 8. Registering the Feature Set
 
 After the pipeline completed successfully, the output of the `merge_all` step was used to register a versioned Feature Set in the Azure ML Feature Store. This makes the engineered features reusable and consistently accessible for downstream modeling pipelines without needing to re-run feature engineering from scratch.
+
+<img width="1627" height="38" alt="image" src="https://github.com/user-attachments/assets/f81422f8-a9be-475c-8e70-c135a9248370" />
 
 
 ---
