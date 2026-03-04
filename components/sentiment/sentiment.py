@@ -1,11 +1,12 @@
 import argparse
 import pandas as pd
 import nltk
+import os
 from nltk.sentiment import SentimentIntensityAnalyzer
 
-# download vader lexicon if not present
 nltk.download("vader_lexicon")
 
+KEYS = ["asin", "reviewerID"]
 
 def main():
     parser = argparse.ArgumentParser()
@@ -14,23 +15,33 @@ def main():
     parser.add_argument("--text_column", type=str, default="reviewText")
     args = parser.parse_args()
 
-    df = pd.read_csv(args.input_path)
+    # Find the parquet file inside the folder
+    files = [f for f in os.listdir(args.input_path) if f.endswith('.parquet')]
+    if not files:
+        raise FileNotFoundError(f"No parquet file found in {args.input_path}")
+
+    input_file = os.path.join(args.input_path, files[0])
+    df = pd.read_parquet(input_file)
 
     sia = SentimentIntensityAnalyzer()
 
-    # fill null safely
     texts = df[args.text_column].fillna("").astype(str)
-
-    # compute sentiment scores
     scores = texts.apply(lambda x: sia.polarity_scores(x))
 
-    df["sentiment_pos"] = scores.apply(lambda x: x["pos"])
-    df["sentiment_neg"] = scores.apply(lambda x: x["neg"])
-    df["sentiment_neu"] = scores.apply(lambda x: x["neu"])
-    df["sentiment_compound"] = scores.apply(lambda x: x["compound"])
+    # Only keep keys + sentiment features (NOT the full dataframe)
+    # Saving the full dataframe causes a memory explosion during merge
+    out_df = df[KEYS].copy()
+    out_df["sentiment_pos"]      = scores.apply(lambda x: x["pos"]).values
+    out_df["sentiment_neg"]      = scores.apply(lambda x: x["neg"]).values
+    out_df["sentiment_neu"]      = scores.apply(lambda x: x["neu"]).values
+    out_df["sentiment_compound"] = scores.apply(lambda x: x["compound"]).values
 
-    df.to_csv(args.output_path, index=False)
+    os.makedirs(args.output_path, exist_ok=True)
+    output_file = os.path.join(args.output_path, "data.parquet")
+    out_df.to_parquet(output_file, index=False)
 
+    print(f"Sentiment features saved to {output_file}")
+    print(f"Output shape: {out_df.shape}")
 
 if __name__ == "__main__":
     main()

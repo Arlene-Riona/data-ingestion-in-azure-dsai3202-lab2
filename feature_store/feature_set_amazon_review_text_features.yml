@@ -1,0 +1,14 @@
+$schema: https://azuremlschemas.azureedge.net/latest/featureSet.schema.json
+
+name: amazon_review_text_features
+version: "1"
+description: Text features engineered from Amazon Electronics reviews
+
+entities:
+  - azureml:AmazonReview:1
+
+feature_transformation_code:
+  path: ./FeatureSetSpec.yaml
+
+materialization_settings:
+  offline_enabled: true

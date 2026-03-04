@@ -1,0 +1,27 @@
+source:
+  type: parquet
+  path: <PASTE_YOUR_MERGE_ALL_OUTPUT_URI_HERE>
+
+index_columns:
+  - name: asin
+    type: string
+  - name: reviewerID
+    type: string
+
+features:
+  - name: review_length_chars
+    type: long
+  - name: review_length_words
+    type: long
+  - name: sentiment_pos
+    type: double
+  - name: sentiment_neg
+    type: double
+  - name: sentiment_neu
+    type: double
+  - name: sentiment_compound
+    type: double
+  - name: tfidf_0
+    type: double
+  - name: bert_embedding
+    type: string

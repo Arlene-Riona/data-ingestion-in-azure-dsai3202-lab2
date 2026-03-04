@@ -2,6 +2,7 @@ $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.jso
 
 name: normalize_text
 display_name: Normalize Review Text
+version: 10
 type: command
 
 inputs:
@@ -15,7 +16,7 @@ outputs:
 code: .
 command: >
   python normalize.py
-  --data ${{inputs.data}}
-  --out ${{outputs.out}}
+  --data ${{inputs.data}}   
+  --out ${{outputs.out}} 
   
 environment: azureml:AzureML-sklearn-1.1-ubuntu20.04-py38-cpu@latest

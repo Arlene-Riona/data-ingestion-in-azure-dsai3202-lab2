@@ -2,7 +2,7 @@ $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.jso
 
 name: tfidf_features
 display_name: TF-IDF Features
-version: 1
+version: 10
 type: command
 
 inputs:

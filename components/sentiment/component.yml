@@ -2,16 +2,16 @@ $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.jso
 
 name: sentiment_feature_component
 display_name: Sentiment Feature Component
-version: 1
+version: 11
 type: command
 
 inputs:
   input_data:
-    type: uri_file
+    type: uri_folder
 
 outputs:
   output_data:
-    type: uri_file
+    type: uri_folder
 
 code: .
 

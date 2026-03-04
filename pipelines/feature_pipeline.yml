@@ -1,0 +1,72 @@
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+type: pipeline
+
+compute: azureml:lab4-cluster-60304739
+
+settings:
+  force_rerun: true
+
+inputs:
+  sampled_data:
+    type: uri_folder
+    path: azureml:amazon_electronics_features_v1_sampled@latest
+
+jobs:
+  split:
+    type: command
+    component: azureml:split_dataset:10
+    inputs:
+      data: ${{parent.inputs.sampled_data}}
+
+  normalize_train:
+    type: command
+    component: azureml:normalize_text:10
+    inputs:
+      data: ${{parent.jobs.split.outputs.train}}
+
+  normalize_val:
+    type: command
+    component: azureml:normalize_text:10
+    inputs:
+      data: ${{parent.jobs.split.outputs.val}}
+
+  normalize_test:
+    type: command
+    component: azureml:normalize_text:10
+    inputs:
+      data: ${{parent.jobs.split.outputs.test}}
+
+  length_train:
+    type: command
+    component: azureml:review_length_component:10
+    inputs:
+      input_data: ${{parent.jobs.normalize_train.outputs.out}}
+
+  sentiment_train:
+    type: command
+    component: azureml:sentiment_feature_component:11
+    inputs:
+      input_data: ${{parent.jobs.normalize_train.outputs.out}}
+
+  tfidf:
+    type: command
+    component: azureml:tfidf_features:10
+    inputs:
+      train: ${{parent.jobs.normalize_train.outputs.out}}
+      val:   ${{parent.jobs.normalize_val.outputs.out}}
+      test:  ${{parent.jobs.normalize_test.outputs.out}}
+
+  sbert_train:
+    type: command
+    component: azureml:sbert_embeddings:10
+    inputs:
+      data: ${{parent.jobs.normalize_train.outputs.out}}
+
+  merge_all:
+    type: command
+    component: azureml:merge_features:10
+    inputs:
+      length:    ${{parent.jobs.length_train.outputs.output_data}} 
+      sentiment: ${{parent.jobs.sentiment_train.outputs.output_data}} 
+      tfidf:     ${{parent.jobs.tfidf.outputs.train_out}}          
+      sbert:     ${{parent.jobs.sbert_train.outputs.out}}
