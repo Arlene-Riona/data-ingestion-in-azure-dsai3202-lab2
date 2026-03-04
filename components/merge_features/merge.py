@@ -89,6 +89,8 @@ def main():
                 .reset_index()
             )
 
+            merged["timestamp"] = pd.Timestamp("today").normalize()
+
             table = pa.Table.from_pandas(merged, preserve_index=False)
 
             if writer is None:
@@ -123,6 +125,8 @@ def main():
                 .join(tfidf_df.loc[idx], how="inner")
                 .reset_index()
             )
+
+            merged["timestamp"] = pd.Timestamp("today").normalize()
 
             merged.to_parquet(os.path.join(part_dir, f"part-{part:05d}.parquet"), index=False)
             print(f"Wrote part {part} | rows {start}..{end} | shape={merged.shape}")

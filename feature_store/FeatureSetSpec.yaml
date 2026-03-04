@@ -1,7 +1,8 @@
 source:
   type: parquet
-  path: https://amazonelectron1140166635.blob.core.windows.net/azureml-blobstore-cecc0dc2-2863-486c-be41-32d7e1326525/azureml/56f719c3-e8c1-407a-b42c-f3a8f64a136b/out/data.parquet
-
+  path: https://amazonelectron1140166635.blob.core.windows.net/azureml-blobstore-cecc0dc2-2863-486c-be41-32d7e1326525/azureml/a2bacdc8-7811-4101-acd3-f97539d3d993/out/data.parquet
+  timestamp_column:
+    name: timestamp
 
 index_columns:
   - name: asin
@@ -10,6 +11,9 @@ index_columns:
     type: string
 
 features:
+  - name: timestamp
+    type: datetime
+
   - name: review_length
     type: int
 
