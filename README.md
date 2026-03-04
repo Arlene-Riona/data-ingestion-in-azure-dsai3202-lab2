@@ -163,6 +163,8 @@ All components were wired together in `pipelines/feature_pipeline.yml` and submi
 
 After the pipeline completed successfully, the output of the `merge_all` step was used to register a versioned Feature Set in the Azure ML Feature Store. This makes the engineered features reusable and consistently accessible for downstream modeling pipelines without needing to re-run feature engineering from scratch.
 
+<img width="1627" height="38" alt="image" src="https://github.com/user-attachments/assets/f81422f8-a9be-475c-8e70-c135a9248370" />
+
 
 ---
 
