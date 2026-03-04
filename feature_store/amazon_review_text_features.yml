@@ -1,0 +1,9 @@
+$schema: https://azuremlschemas.azureedge.net/latest/featureSet.schema.json
+name: amazon_review_text_features
+version: "1"
+
+specification:
+  path: .
+
+entities:
+  - amazon_review

@@ -1,6 +1,7 @@
 source:
   type: parquet
-  path: <PASTE_YOUR_MERGE_ALL_OUTPUT_URI_HERE>
+  path: https://amazonelectron1140166635.blob.core.windows.net/azureml-blobstore-cecc0dc2-2863-486c-be41-32d7e1326525/azureml/56f719c3-e8c1-407a-b42c-f3a8f64a136b/out/data.parquet
+
 
 index_columns:
   - name: asin
@@ -9,19 +10,30 @@ index_columns:
     type: string
 
 features:
-  - name: review_length_chars
-    type: long
-  - name: review_length_words
-    type: long
-  - name: sentiment_pos
-    type: double
-  - name: sentiment_neg
-    type: double
-  - name: sentiment_neu
-    type: double
-  - name: sentiment_compound
-    type: double
+  - name: review_length
+    type: int
+
+  - name: sentiment_score
+    type: float
+
   - name: tfidf_0
-    type: double
-  - name: bert_embedding
-    type: string
+    type: float
+  - name: tfidf_1
+    type: float
+  - name: tfidf_2
+    type: float
+  - name: tfidf_3
+    type: float
+  - name: tfidf_4
+    type: float
+
+  - name: sbert_0
+    type: float
+  - name: sbert_1
+    type: float
+  - name: sbert_2
+    type: float
+  - name: sbert_3
+    type: float
+  - name: sbert_4
+    type: float
