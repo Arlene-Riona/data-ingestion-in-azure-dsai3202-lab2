@@ -154,6 +154,7 @@ All feature outputs are merged into a single dataset by joining on the entity ke
 All components were wired together in `pipelines/feature_pipeline.yml` and submitted to the Azure ML compute cluster. The pipeline runs entirely on Azure ML compute, not locally, and each step is tracked and versioned automatically.
 
 <img width="1470" height="178" alt="image" src="https://github.com/user-attachments/assets/a8b179ce-873e-437e-8421-54e967efe655" />
+<img width="1476" height="607" alt="image" src="https://github.com/user-attachments/assets/5a8cbfe4-8300-4fd6-bc74-c227f74409e2" />
 
 
 ---
