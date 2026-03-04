@@ -140,6 +140,7 @@ TF-IDF (Term Frequency–Inverse Document Frequency) converts review text into a
 #### SBERT Semantic Embeddings
 Sentence-BERT (`all-MiniLM-L6-v2`) generates dense 384-dimensional vector embeddings for each review. Unlike TF-IDF which treats words independently, SBERT captures semantic meaning — reviews that mean the same thing will have similar embeddings even if they use different words. This significantly improves a model's ability to understand nuance and context.
 
+<img width="1436" height="562" alt="image" src="https://github.com/user-attachments/assets/872cb1cd-9531-4d2c-9125-afecd149a530" />
 
 ---
 
