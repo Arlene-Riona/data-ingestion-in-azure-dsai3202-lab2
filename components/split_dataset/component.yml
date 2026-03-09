@@ -8,7 +8,9 @@ $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.jso
 name: split_dataset
 display_name: Split Dataset
 description: "Splits GA-selected features into train and validation sets"
-version: "1.0"
+version: "1.1"
+
+code: .
 
 # ── Inputs ───────────────────────────────────────────────────
 inputs:

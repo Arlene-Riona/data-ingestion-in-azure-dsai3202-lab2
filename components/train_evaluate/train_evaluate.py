@@ -13,7 +13,6 @@ from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import joblib
 import mlflow
-import mlflow.sklearn
 
 def parse_args():
     parser = argparse.ArgumentParser("train_evaluate")
@@ -174,9 +173,6 @@ def main():
     mlflow.log_param("n_estimators", args.n_estimators)
     mlflow.log_param("max_depth", args.max_depth)
     mlflow.log_param("n_features", len(feature_cols))
-
-    # Log model to MLflow
-    mlflow.sklearn.log_model(model, "model")
 
     # ── Save Outputs ─────────────────────────────────────────
     os.makedirs(args.model_output, exist_ok=True)

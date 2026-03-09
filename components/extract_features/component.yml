@@ -8,7 +8,9 @@ $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.jso
 name: extract_features
 display_name: Extract Features (tsfresh)
 description: "Extracts time-series features from NASA C-MAPSS data using tsfresh"
-version: "1.0"
+version: "1.1"
+
+code: .
 
 # ── Inputs ───────────────────────────────────────────────────
 inputs:

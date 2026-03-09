@@ -8,7 +8,9 @@ $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.jso
 name: train_evaluate
 display_name: Train and Evaluate Model
 description: "Trains a regression model to predict RUL and evaluates with RMSE, MAE, R2"
-version: "1.0"
+version: "1.2"
+
+code: .
 
 # ── Inputs ───────────────────────────────────────────────────
 inputs:

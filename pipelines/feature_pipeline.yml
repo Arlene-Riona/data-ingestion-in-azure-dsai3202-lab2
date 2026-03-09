@@ -5,14 +5,14 @@
 # ============================================================
 
 $schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+type: pipeline
 
-name: lab5_feature_pipeline
 display_name: "Lab 5 - Feature Extraction and Selection Pipeline"
 description: "End-to-end pipeline for RUL prediction using tsfresh and DEAP"
 experiment_name: "lab5-predictive-maintenance"
 
 # ── Compute ──────────────────────────────────────────────────
-compute: azml:azurecompute60304739
+compute: azureml:azurecompute60304739
 
 # ── Inputs ───────────────────────────────────────────────────
 inputs:
