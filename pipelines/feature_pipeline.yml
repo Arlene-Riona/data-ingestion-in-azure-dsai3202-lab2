@@ -1,0 +1,126 @@
+# ============================================================
+# Azure ML Pipeline Definition
+# Scalable Feature Extraction and Selection for Predictive
+# Maintenance - NASA C-MAPSS FD001
+# ============================================================
+
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+
+name: lab5_feature_pipeline
+display_name: "Lab 5 - Feature Extraction and Selection Pipeline"
+description: "End-to-end pipeline for RUL prediction using tsfresh and DEAP"
+experiment_name: "lab5-predictive-maintenance"
+
+# ── Compute ──────────────────────────────────────────────────
+compute: azml:azurecompute60304739
+
+# ── Inputs ───────────────────────────────────────────────────
+inputs:
+  train_data:
+    type: uri_folder
+    path: azureml://datastores/blobkey/paths/FD001/train_tsfresh_ready
+  test_data:
+    type: uri_folder
+    path: azureml://datastores/blobkey/paths/FD001/test_tsfresh_ready
+  rul_labels:
+    type: uri_folder
+    path: azureml://datastores/blobkey/paths/FD001/train_rul_labels
+
+# ── Jobs (Components) ─────────────────────────────────────────
+jobs:
+
+  # ── Step 1: Extract Features ────────────────────────────────
+  extract_features:
+    type: command
+    component: file:../components/extract_features/component.yml
+    inputs:
+      train_data: ${{parent.inputs.train_data}}
+      test_data: ${{parent.inputs.test_data}}
+      rul_labels: ${{parent.inputs.rul_labels}}
+      feature_set: "MinimalFCParameters"
+      n_jobs: 4
+    outputs:
+      train_features:
+        type: uri_folder
+      test_features:
+        type: uri_folder
+      extraction_metrics:
+        type: uri_folder
+
+  # ── Step 2: Filter Selection ─────────────────────────────────
+  filter_selection:
+    type: command
+    component: file:../components/filter_selection/component.yml
+    inputs:
+      train_features: ${{parent.jobs.extract_features.outputs.train_features}}
+      test_features: ${{parent.jobs.extract_features.outputs.test_features}}
+      variance_threshold: 0.01
+      correlation_threshold: 0.95
+      mutual_info_percentile: 50
+    outputs:
+      train_filtered:
+        type: uri_folder
+      test_filtered:
+        type: uri_folder
+      selected_features:
+        type: uri_folder
+      filter_metrics:
+        type: uri_folder
+
+  # ── Step 3: Genetic Algorithm ─────────────────────────────────
+  genetic_algorithm:
+    type: command
+    component: file:../components/genetic_algorithm/component.yml
+    inputs:
+      train_filtered: ${{parent.jobs.filter_selection.outputs.train_filtered}}
+      test_filtered: ${{parent.jobs.filter_selection.outputs.test_filtered}}
+      population_size: 50
+      n_generations: 20
+      crossover_prob: 0.7
+      mutation_prob: 0.2
+      tournament_size: 3
+      min_features: 5
+      random_seed: 42
+    outputs:
+      train_ga_selected:
+        type: uri_folder
+      test_ga_selected:
+        type: uri_folder
+      ga_metrics:
+        type: uri_folder
+
+  # ── Step 4: Split Dataset ─────────────────────────────────────
+  split_dataset:
+    type: command
+    component: file:../components/split_dataset/component.yml
+    inputs:
+      train_ga_selected: ${{parent.jobs.genetic_algorithm.outputs.train_ga_selected}}
+      test_size: 0.2
+      random_seed: 42
+    outputs:
+      train_split:
+        type: uri_folder
+      val_split:
+        type: uri_folder
+      split_metrics:
+        type: uri_folder
+
+  # ── Step 5: Train and Evaluate ────────────────────────────────
+  train_evaluate:
+    type: command
+    component: file:../components/train_evaluate/component.yml
+    inputs:
+      train_split: ${{parent.jobs.split_dataset.outputs.train_split}}
+      val_split: ${{parent.jobs.split_dataset.outputs.val_split}}
+      test_ga_selected: ${{parent.jobs.genetic_algorithm.outputs.test_ga_selected}}
+      model_type: "RandomForest"
+      n_estimators: 100
+      max_depth: 10
+      random_seed: 42
+    outputs:
+      model_output:
+        type: uri_folder
+      evaluation_metrics:
+        type: uri_folder
+      test_predictions:
+        type: uri_folder

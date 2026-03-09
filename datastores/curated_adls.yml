@@ -1,0 +1,9 @@
+datastore_name: blobkey
+
+
+paths:
+  train_tsfresh_ready: "FD001/train_tsfresh_ready"
+  test_tsfresh_ready: "FD001/test_tsfresh_ready"
+  train_rul_labels: "FD001/train_rul_labels"
+  train_gold: "FD001/train_gold"
+  test_gold: "FD001/test_gold"

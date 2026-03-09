@@ -1,0 +1,60 @@
+# ============================================================
+# Azure ML Component Definition
+# Extract time-series features using tsfresh
+# ============================================================
+
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+
+name: extract_features
+display_name: Extract Features (tsfresh)
+description: "Extracts time-series features from NASA C-MAPSS data using tsfresh"
+version: "1.0"
+
+# ── Inputs ───────────────────────────────────────────────────
+inputs:
+  train_data:
+    type: uri_folder
+    description: "tsfresh-ready training data from curated layer"
+  test_data:
+    type: uri_folder
+    description: "tsfresh-ready test data from curated layer"
+  rul_labels:
+    type: uri_folder
+    description: "RUL labels per engine per cycle"
+  feature_set:
+    type: string
+    default: "MinimalFCParameters"
+    description: "tsfresh feature set: MinimalFCParameters, EfficientFCParameters, ComprehensiveFCParameters"
+  n_jobs:
+    type: integer
+    default: 4
+    description: "Number of parallel jobs for tsfresh extraction"
+
+# ── Outputs ──────────────────────────────────────────────────
+outputs:
+  train_features:
+    type: uri_folder
+    description: "Extracted features for training data"
+  test_features:
+    type: uri_folder
+    description: "Extracted features for test data"
+  extraction_metrics:
+    type: uri_folder
+    description: "Runtime and feature count metrics"
+
+# ── Command ──────────────────────────────────────────────────
+command: >-
+  python extract_features.py
+  --train_data ${{inputs.train_data}}
+  --test_data ${{inputs.test_data}}
+  --rul_labels ${{inputs.rul_labels}}
+  --feature_set ${{inputs.feature_set}}
+  --n_jobs ${{inputs.n_jobs}}
+  --train_features ${{outputs.train_features}}
+  --test_features ${{outputs.test_features}}
+  --extraction_metrics ${{outputs.extraction_metrics}}
+
+# ── Environment ──────────────────────────────────────────────
+environment:
+  conda_file: ./conda.yml
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04

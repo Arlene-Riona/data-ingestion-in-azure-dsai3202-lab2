@@ -1,0 +1,15 @@
+name: extract_features_env
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pip
+  - pip:
+    - tsfresh==0.20.1
+    - pandas==1.5.3
+    - numpy==1.23.5
+    - scikit-learn==1.2.2
+    - pyarrow==11.0.0
+    - azureml-core
+    - mlflow

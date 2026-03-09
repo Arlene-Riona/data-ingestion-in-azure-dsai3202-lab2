@@ -1,0 +1,67 @@
+# ============================================================
+# Azure ML Component Definition
+# Train model and evaluate RUL predictions
+# ============================================================
+
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+
+name: train_evaluate
+display_name: Train and Evaluate Model
+description: "Trains a regression model to predict RUL and evaluates with RMSE, MAE, R2"
+version: "1.0"
+
+# ── Inputs ───────────────────────────────────────────────────
+inputs:
+  train_split:
+    type: uri_folder
+    description: "Training split from split_dataset component"
+  val_split:
+    type: uri_folder
+    description: "Validation split from split_dataset component"
+  test_ga_selected:
+    type: uri_folder
+    description: "GA selected test features"
+  model_type:
+    type: string
+    default: "RandomForest"
+    description: "Model type: RandomForest, XGBoost, LightGBM"
+  n_estimators:
+    type: integer
+    default: 100
+  max_depth:
+    type: integer
+    default: 10
+  random_seed:
+    type: integer
+    default: 42
+
+# ── Outputs ──────────────────────────────────────────────────
+outputs:
+  model_output:
+    type: uri_folder
+    description: "Saved trained model"
+  evaluation_metrics:
+    type: uri_folder
+    description: "RMSE, MAE, R2 metrics on validation set"
+  test_predictions:
+    type: uri_folder
+    description: "RUL predictions on test set"
+
+# ── Command ──────────────────────────────────────────────────
+command: >-
+  python train_evaluate.py
+  --train_split ${{inputs.train_split}}
+  --val_split ${{inputs.val_split}}
+  --test_ga_selected ${{inputs.test_ga_selected}}
+  --model_type ${{inputs.model_type}}
+  --n_estimators ${{inputs.n_estimators}}
+  --max_depth ${{inputs.max_depth}}
+  --random_seed ${{inputs.random_seed}}
+  --model_output ${{outputs.model_output}}
+  --evaluation_metrics ${{outputs.evaluation_metrics}}
+  --test_predictions ${{outputs.test_predictions}}
+
+# ── Environment ──────────────────────────────────────────────
+environment:
+  conda_file: ./conda.yml
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04

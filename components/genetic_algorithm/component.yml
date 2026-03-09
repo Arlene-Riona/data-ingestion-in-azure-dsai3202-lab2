@@ -1,0 +1,80 @@
+# ============================================================
+# Azure ML Component Definition
+# Genetic Algorithm Feature Selection using DEAP
+# ============================================================
+
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+
+name: genetic_algorithm
+display_name: Genetic Algorithm Feature Selection (DEAP)
+description: "Evolves optimal feature subsets using DEAP genetic algorithm"
+version: "1.0"
+
+# ── Inputs ───────────────────────────────────────────────────
+inputs:
+  train_filtered:
+    type: uri_folder
+    description: "Filter-selected training features"
+  test_filtered:
+    type: uri_folder
+    description: "Filter-selected test features"
+  population_size:
+    type: integer
+    default: 50
+    description: "Number of individuals per generation"
+  n_generations:
+    type: integer
+    default: 20
+    description: "Number of generations to evolve"
+  crossover_prob:
+    type: number
+    default: 0.7
+    description: "Probability of crossover between individuals"
+  mutation_prob:
+    type: number
+    default: 0.2
+    description: "Probability of mutation per gene"
+  tournament_size:
+    type: integer
+    default: 3
+    description: "Tournament selection size"
+  min_features:
+    type: integer
+    default: 5
+    description: "Minimum features an individual must select"
+  random_seed:
+    type: integer
+    default: 42
+
+# ── Outputs ──────────────────────────────────────────────────
+outputs:
+  train_ga_selected:
+    type: uri_folder
+    description: "Training data with GA selected features"
+  test_ga_selected:
+    type: uri_folder
+    description: "Test data with GA selected features"
+  ga_metrics:
+    type: uri_folder
+    description: "GA evolution metrics and selected feature names"
+
+# ── Command ──────────────────────────────────────────────────
+command: >-
+  python genetic_algorithm.py
+  --train_filtered ${{inputs.train_filtered}}
+  --test_filtered ${{inputs.test_filtered}}
+  --population_size ${{inputs.population_size}}
+  --n_generations ${{inputs.n_generations}}
+  --crossover_prob ${{inputs.crossover_prob}}
+  --mutation_prob ${{inputs.mutation_prob}}
+  --tournament_size ${{inputs.tournament_size}}
+  --min_features ${{inputs.min_features}}
+  --random_seed ${{inputs.random_seed}}
+  --train_ga_selected ${{outputs.train_ga_selected}}
+  --test_ga_selected ${{outputs.test_ga_selected}}
+  --ga_metrics ${{outputs.ga_metrics}}
+
+# ── Environment ──────────────────────────────────────────────
+environment:
+  conda_file: ./conda.yml
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04

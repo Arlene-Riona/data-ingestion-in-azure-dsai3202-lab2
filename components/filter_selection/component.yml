@@ -1,0 +1,65 @@
+# ============================================================
+# Azure ML Component Definition
+# Filter-based feature selection
+# ============================================================
+
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+
+name: filter_selection
+display_name: Filter-Based Feature Selection
+description: "Reduces feature dimensionality using variance threshold, correlation filtering, and mutual information"
+version: "1.0"
+
+# ── Inputs ───────────────────────────────────────────────────
+inputs:
+  train_features:
+    type: uri_folder
+    description: "Extracted train features from tsfresh component"
+  test_features:
+    type: uri_folder
+    description: "Extracted test features from tsfresh component"
+  variance_threshold:
+    type: number
+    default: 0.01
+    description: "Drop features with variance below this threshold"
+  correlation_threshold:
+    type: number
+    default: 0.95
+    description: "Drop one of two features correlated above this threshold"
+  mutual_info_percentile:
+    type: integer
+    default: 50
+    description: "Keep top N% features by mutual information score"
+
+# ── Outputs ──────────────────────────────────────────────────
+outputs:
+  train_filtered:
+    type: uri_folder
+    description: "Filtered training features"
+  test_filtered:
+    type: uri_folder
+    description: "Filtered test features"
+  selected_features:
+    type: uri_folder
+    description: "List of selected feature names"
+  filter_metrics:
+    type: uri_folder
+    description: "Metrics about features removed at each step"
+
+# ── Command ──────────────────────────────────────────────────
+command: >-
+  python filter_selection.py
+  --train_features ${{inputs.train_features}}
+  --test_features ${{inputs.test_features}}
+  --variance_threshold ${{inputs.variance_threshold}}
+  --correlation_threshold ${{inputs.correlation_threshold}}
+  --mutual_info_percentile ${{inputs.mutual_info_percentile}}
+  --train_filtered ${{outputs.train_filtered}}
+  --test_filtered ${{outputs.test_filtered}}
+  --selected_features ${{outputs.selected_features}}
+  --filter_metrics ${{outputs.filter_metrics}}
+
+# ── Environment ──────────────────────────────────────────────
+environment:
+  conda_file: ./conda.yml
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04

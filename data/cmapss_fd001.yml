@@ -1,0 +1,25 @@
+# ============================================================
+# Azure ML Data Asset Definition
+# NASA C-MAPSS FD001 Dataset
+# ============================================================
+
+$schema: https://azuremlschemas.azureedge.net/latest/data.schema.json
+
+name: cmapss_fd001
+description: "NASA C-MAPSS Turbofan Engine Degradation Dataset - FD001 subset. 
+  Contains sensor measurements from 100 aircraft engines operating until failure.
+  Used for Remaining Useful Life (RUL) prediction."
+version: "1"
+type: uri_folder
+
+# ── Path ─────────────────────────────────────────────────────
+# Points to tsfresh-ready gold layer in curated container
+path: azureml://datastores/blobkey/paths/FD001/train_tsfresh_ready
+
+# ── Tags ─────────────────────────────────────────────────────
+tags:
+  dataset: "NASA C-MAPSS"
+  subset: "FD001"
+  task: "RUL Prediction"
+  layer: "Gold"
+  lab: "Lab 5"

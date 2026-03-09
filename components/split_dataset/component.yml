@@ -1,0 +1,51 @@
+# ============================================================
+# Azure ML Component Definition
+# Split dataset into train and validation sets
+# ============================================================
+
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+
+name: split_dataset
+display_name: Split Dataset
+description: "Splits GA-selected features into train and validation sets"
+version: "1.0"
+
+# ── Inputs ───────────────────────────────────────────────────
+inputs:
+  train_ga_selected:
+    type: uri_folder
+    description: "GA selected training features"
+  test_size:
+    type: number
+    default: 0.2
+    description: "Proportion of data to use for validation"
+  random_seed:
+    type: integer
+    default: 42
+
+# ── Outputs ──────────────────────────────────────────────────
+outputs:
+  train_split:
+    type: uri_folder
+    description: "Training split"
+  val_split:
+    type: uri_folder
+    description: "Validation split"
+  split_metrics:
+    type: uri_folder
+    description: "Split size metrics"
+
+# ── Command ──────────────────────────────────────────────────
+command: >-
+  python split_dataset.py
+  --train_ga_selected ${{inputs.train_ga_selected}}
+  --test_size ${{inputs.test_size}}
+  --random_seed ${{inputs.random_seed}}
+  --train_split ${{outputs.train_split}}
+  --val_split ${{outputs.val_split}}
+  --split_metrics ${{outputs.split_metrics}}
+
+# ── Environment ──────────────────────────────────────────────
+environment:
+  conda_file: ./conda.yml
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
