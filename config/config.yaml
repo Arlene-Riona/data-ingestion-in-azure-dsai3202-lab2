@@ -1,0 +1,75 @@
+# Lab 5 - Scalable Feature Extraction and Selection
+# Predictive Maintenance - NASA C-MAPSS FD001
+
+# Storage 
+storage:
+  account_name: "azuredatalake60304739"
+  container_raw: "raw"
+  container_silver: "processed"
+  container_gold: "curated"
+
+# Data Paths
+data:
+  subset: "FD001"
+  train_tsfresh_ready: "FD001/train_tsfresh_ready"
+  test_tsfresh_ready: "FD001/test_tsfresh_ready"
+  train_rul_labels: "FD001/train_rul_labels"
+  test_gold: "FD001/test_gold"
+  rul_file: "FD001/RUL_FD001.txt"
+
+# Preprocessing 
+preprocessing:
+  rul_clip: 125
+  constant_sensors:
+    - "sensor_1"
+    - "sensor_5"
+    - "sensor_6"
+    - "sensor_10"
+    - "sensor_16"
+    - "sensor_18"
+    - "sensor_19"
+  id_column: "engine_id"
+  time_column: "cycle"
+
+# tsfresh Feature Extraction
+tsfresh:
+  # minimal = fast, less features (~800)
+  # efficient = balanced (~800 but filtered)
+  # comprehensive = slow, most features (~4500)
+  feature_set: "MinimalFCParameters"
+  n_jobs: 4                    # parallel jobs for extraction
+  chunksize: 10                # engines processed per chunk
+  disable_progressbar: false
+
+# Filter-Based Feature Selection 
+filter_selection:
+  variance_threshold: 0.01     # drop features with variance below this
+  correlation_threshold: 0.95  # drop one of two features correlated above this
+  mutual_info_percentile: 50   # keep top 50% features by mutual information
+
+# Genetic Algorithm (DEAP) 
+genetic_algorithm:
+  population_size: 50          # number of individuals per generation
+  n_generations: 20            # number of generations to evolve
+  crossover_prob: 0.7          # probability of crossover
+  mutation_prob: 0.2           # probability of mutation
+  tournament_size: 3           # tournament selection size
+  min_features: 5              # minimum features an individual must select
+  random_seed: 42
+
+# Model 
+model:
+  type: "RandomForest"         # RandomForest, XGBoost, LightGBM
+  n_estimators: 100
+  max_depth: 10
+  random_seed: 42
+  test_size: 0.2               # train/test split ratio
+  cv_folds: 5                  # cross validation folds for GA fitness
+
+# Evaluation 
+evaluation:
+  primary_metric: "RMSE"
+  secondary_metrics:
+    - "MAE"
+    - "R2"
+  track_runtime: true          
