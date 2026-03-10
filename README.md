@@ -66,7 +66,7 @@ The repository was structured to cleanly separate Databricks notebooks, Azure ML
 ```
 repo/
 ├── databricks/
-│   ├── 01_bronze_to_silver.ipynb
+│   ├── 01_bronze_ingestion.ipynb
 │   ├── 02_silver_to_gold.ipynb
 │   └── 03_gold_to_features.ipynb
 ├── components/
@@ -99,7 +99,8 @@ repo/
 
 The screenshot below shows the component directories being created in PowerShell using `New-Item`:
 
-<img width="940" alt="Creating the GitHub repository structure" src="screenshot_01_repo_structure.png" />
+<img width="940" height="278" alt="image" src="https://github.com/user-attachments/assets/8b91010f-2276-46d0-852b-c07bebad3d2c" />
+
 
 ---
 
@@ -113,7 +114,8 @@ All `conda.yml` files use `azureml-mlflow` instead of the generic `mlflow` packa
 
 Registered with inputs for `train_data`, `test_data`, `rul_labels`, `feature_set`, and `n_jobs`, and outputs for `train_features`, `test_features`, and `extraction_metrics`.
 
-<img width="940" alt="Registering extract_features component" src="screenshot_02_register_extract_features.png" />
+<img width="940" height="25" alt="image" src="https://github.com/user-attachments/assets/e0184a92-e107-46c4-8d11-0365edd6db81" />
+
 
 ---
 
@@ -121,7 +123,8 @@ Registered with inputs for `train_data`, `test_data`, `rul_labels`, `feature_set
 
 Registered with configurable thresholds for variance, correlation, and mutual information filtering. The registered command confirms all expected inputs and outputs including `variance_threshold`, `correlation_threshold`, and `mutual_info_percentile`.
 
-<img width="940" alt="Registering filter_selection component" src="screenshot_03_register_filter_selection.png" />
+<img width="940" height="83" alt="image" src="https://github.com/user-attachments/assets/2259f094-d582-4181-87a6-6a86efd226a1" />
+
 
 ---
 
@@ -129,7 +132,8 @@ Registered with configurable thresholds for variance, correlation, and mutual in
 
 Registered with all DEAP hyperparameters exposed as inputs — `population_size`, `n_generations`, `crossover_prob`, `mutation_prob`, `tournament_size`, and `min_features` — confirming the component is fully configurable without code changes.
 
-<img width="940" alt="Registering genetic_algorithm component" src="screenshot_04_register_genetic_algorithm.png" />
+<img width="940" height="92" alt="image" src="https://github.com/user-attachments/assets/e21d3754-4dda-4243-8bd4-5af53f727ca0" />
+
 
 ---
 
@@ -137,7 +141,8 @@ Registered with all DEAP hyperparameters exposed as inputs — `population_size`
 
 Registered with `test_size` and `random_seed` as configurable inputs to ensure reproducible splits.
 
-<img width="940" alt="Registering split_dataset component" src="screenshot_05_register_split_dataset.png" />
+<img width="940" height="80" alt="image" src="https://github.com/user-attachments/assets/af305687-b92e-4b2d-a9ec-b2aab165c933" />
+
 
 ---
 
@@ -145,7 +150,8 @@ Registered with `test_size` and `random_seed` as configurable inputs to ensure r
 
 Registered with `model_type`, `n_estimators`, and `max_depth` as configurable inputs, allowing different model types to be tested without modifying any code.
 
-<img width="940" alt="Registering train_evaluate component" src="screenshot_06_register_train_evaluate.png" />
+<img width="940" height="86" alt="image" src="https://github.com/user-attachments/assets/c8002fcf-92b7-4b7d-b207-e097ef9269fe" />
+
 
 ---
 
@@ -235,7 +241,8 @@ az ml job create --file pipelines/feature_pipeline.yml `
 
 All 5 components completed successfully as shown below:
 
-<img width="940" alt="Completed pipeline in Azure ML Studio — all 5 components green" src="screenshot_07_pipeline_success.png" />
+<img width="700" height="700" alt="image" src="https://github.com/user-attachments/assets/22cfc750-1448-4aab-882a-9f1d18675fd1" />
+
 
 ---
 
