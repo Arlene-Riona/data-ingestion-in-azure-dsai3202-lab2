@@ -352,6 +352,31 @@ The spread of predictions from ~10 to 125 confirms the model produces meaningful
 
 ---
 
+### 12. Pipeline Runtime
+
+| Step | Details | Runtime |
+|---|---|---|
+| Databricks ETL | Bronze → Silver → Gold (3 notebooks) | ~5 min |
+| extract_features (train) | 100 engines, window=30, step=5, MinimalFCParameters | 49.00s |
+| extract_features (test) | 100 engines, window=30, step=5, MinimalFCParameters | 30.63s |
+| filter_selection | 182 → 91 → 22 → 11 features | <1s |
+| genetic_algorithm | 50 population, 20 generations, 11 features → 6 selected | 100.99s |
+| split_dataset | 4063 rows → 3250 train / 813 val | <1s |
+| train_evaluate | RandomForest, 100 estimators | 0.35s |
+| **Total Azure ML Pipeline** | | **~3 min 42s** |
+
+Feature extraction is the dominant cost at 79.63s total, using `MinimalFCParameters` with a rolling window of 30 cycles and step size of 5 across 100 engines on a Standard_DS3_v2 compute instance. The genetic algorithm adds 100.99s evolving across 20 generations to select the optimal 6 features from 11 candidates.
+
+Also the filter selection did a great job as:
+
+182 features extracted
+→ 91 after variance filter   (removed 50%)
+→ 22 after correlation filter (removed 69 redundant)
+→ 11 after mutual info        (kept top 50%)
+→  6 after GA                 (final optimal subset)
+
+---
+
 ## Summary
 
 | Component | Purpose | Key Output |
