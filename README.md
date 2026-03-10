@@ -58,7 +58,69 @@ Label statistics confirmed correct computation: mean RUL = 86.83, min = 0, max =
 
 ---
 
-## Part II – Azure ML Pipeline
+## Part II – Time-Series Exploration and Validation
+
+### 1. Engine Lifetime Distribution
+The training set contains 100 engines with lifetimes ranging from 128 to 362 cycles. 
+The majority of engines lived well beyond the RUL clip threshold of 125, justifying 
+the piecewise linear degradation assumption used in preprocessing.
+
+<img width="987" height="487" alt="image" src="https://github.com/user-attachments/assets/98dd8c16-366d-4609-9325-d5a530c7ab38" />
+
+
+---
+
+### 2. RUL Distribution Before and After Clipping
+Before clipping, RUL is heavily skewed with many values above 125. After clipping 
+at 125, the distribution becomes uniform giving the model equal training examples 
+at every degradation stage.
+
+<img width="1186" height="493" alt="image" src="https://github.com/user-attachments/assets/71de6efa-6b6d-4e92-aae2-66f5f1b8aa01" />
+
+
+---
+
+### 3. Sensor Behaviour Across Engine Cycles
+Several sensors show a clear monotonic trend as the engine approaches failure. 
+sensor_2 and sensor_4 trend upward while sensor_7 trends downward, confirming 
+they carry strong degradation signal across all engines.
+
+<img width="1406" height="2552" alt="image" src="https://github.com/user-attachments/assets/91613c17-1b34-4602-9cbf-4903adbef486" />
+
+
+---
+
+### 4. Sensor Correlation with RUL
+sensor_2, sensor_4, and sensor_11 show the strongest correlation with RUL. 
+This directly motivates the mutual information filter in the pipeline which 
+keeps only the top 50% most informative features.
+
+<img width="986" height="587" alt="image" src="https://github.com/user-attachments/assets/c7cba25e-65e5-41fe-93fe-e15502ec8a11" />
+
+
+---
+
+### 5. Sensor Correlation Heatmap
+Several sensor pairs exceed the 0.95 correlation threshold, confirming that 
+redundant features exist in the dataset and justifying the correlation filter 
+step in the pipeline.
+
+<img width="1129" height="994" alt="image" src="https://github.com/user-attachments/assets/2766cb96-6c1b-4965-80db-bad9bcc72f6a" />
+
+
+---
+
+### 6. Sensor Readings by Life Phase
+Sensors such as sensor_2 and sensor_4 show a clear difference between early 
+life and end of life phases, confirming they carry strong degradation signal. 
+This reinforces the feature selection decisions made by the genetic algorithm.
+
+<img width="1387" height="983" alt="image" src="https://github.com/user-attachments/assets/aef26949-784e-48a8-a999-3058d6d9410f" />
+
+
+---
+
+## Part III – Azure ML Pipeline
 
 ### 5. Repository Structure and Component Setup
 
@@ -246,7 +308,7 @@ All 5 components completed successfully as shown below:
 
 ---
 
-## Part III – Results
+## Part IV – Results
 
 ### 9. Validation Metrics
 
