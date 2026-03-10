@@ -1,52 +1,298 @@
-# Data Ingestion Pipeline on Azure - Lab 2
+# Lab 5 – Scalable Feature Extraction and Selection for Predictive Maintenance
 
-Name: Arlene Riona
+## Overview
 
-Student ID: 60304739
+This lab builds a scalable end-to-end machine learning pipeline for **Remaining Useful Life (RUL) prediction** of aircraft turbofan engines using the NASA C-MAPSS FD001 dataset. The goal is to predict how many cycles remain before an engine fails based on sensor readings, which is a core problem in predictive maintenance.
 
-1 - An Azure Storage Account is created to be our data lake from the Azure portal. In the storage account, 3 containers called raw, processed and curated was created. After this the product metadata dataset was uploaded to the raw container. 
+The pipeline follows a **medallion architecture** (Bronze → Silver → Gold) on Azure Blob Storage, uses **Azure Databricks** for ETL processing, **tsfresh** for automated time-series feature extraction using rolling windows, a **DEAP genetic algorithm** for optimal feature subset selection, and an **Azure ML Pipeline** with 5 modular command components for scalable and reproducible model training and evaluation.
 
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/0dae1bca-acce-4778-ab73-15d9adcb2764" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/37066dc4-33b5-4d1d-a6e7-11ab5a2be50c" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/9997eb8d-6dac-46e0-a372-c1ac6844b547" />
+---
 
-#
-2 - We then needed to create a compute instance in the Azure machine learning studio. Then we need to download the electronics reviews dataset using the terminal in the compute instance. Once this is done, we need to upload the dataset to azure blob storage using SAS token. 
+## Part I – Medallion Architecture and Databricks ETL
 
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/f70f40b5-f65c-45a1-b36f-568efa6f3ce5" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/0a77d410-f5b1-4237-abd7-c6eea5cc5578" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/8e3ffaa1-f1a6-45d7-be20-bae88c132545" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/9b7fd142-5411-4232-b8d7-3f24b61b56cb" />
+### 1. Storage Setup and Medallion Architecture
 
-#
-3 - To create the SAS token, we need to go to shared access signature under azure data lake storage account. After this we upload the uncompressed json file (the electronics review dataset) to azure blob storage. After this, we fix the json file since it's not a valid json file using a python script and upload back the fixed json file to the blob storage.
+Data was organised across three layers in Azure Blob Storage, following the medallion architecture pattern where each layer represents a progressively cleaner and more enriched version of the data:
 
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/952718a6-8458-420e-ba13-44b4a6158826" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/5576c1b5-6bfb-47c1-9eb5-f2ad7e6c230b" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/63810ce7-534c-4386-a680-74f0e16f9120" />
+- **Bronze layer** (`raw/FD001/`) — raw `.txt` files exactly as received from NASA, never modified. This ensures we can always trace back to the original source.
+- **Silver layer** (`processed/FD001/`) — cleaned, correctly typed, and validated data written as Parquet. Column names are assigned, types are cast, and constant sensors are removed.
+- **Gold layer** (`curated/FD001/`) — fully normalised, RUL-labelled, tsfresh-ready data for ML consumption.
 
-#
-4 - We built an automated ingestion pipeline in azure data factory that takes the amazon electronics reviews json file from the storage account to the processed zone in parquet format. To do this, we need to create an ADF instance. Once this is done, we need to create a linked service to our storage account.
+This separation means that if any downstream step needs to be re-run or changed, only the relevant layer needs to be reprocessed without touching the earlier ones.
 
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/48e4c3ee-0e8f-4f8d-9836-f680930ca341" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/256d9272-51a6-437a-ac8e-d029ee477036" />
+---
 
-#
-5 - After the above step, we need to create the source dataset and sink dataset. We can then make a mapping data fow for the raw json reviews and make a derived column to convert the unix timestamp into a calendar year that can be used for partitioning. We can then configure the sink dataset to create a full data flow.
+### 2. Bronze → Silver (`01_bronze_ingestion`)
 
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/571a257d-e902-466e-9544-409b4727693c" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/b8b3c9b3-47aa-4011-8115-e421ec5b78cf" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/f4433b8d-db9c-4f4d-b1e9-53ae1a200810" />
+The raw C-MAPSS files have no column headers and contain trailing empty columns. The first Databricks notebook reads the raw training and test files, assigns all 26 correct column names, casts `engine_id` and `cycle` to integers and all sensor and operational setting columns to floats, and drops the two trailing empty columns.
 
-#
-6 - Now we need to create a pipeline to connect the data flow. The output of the pipline is then stored in the processed container.
+**Constant sensor removal:** Seven sensors (`sensor_1`, `sensor_5`, `sensor_6`, `sensor_10`, `sensor_16`, `sensor_18`, `sensor_19`) were found to have zero variance across all engines and cycles. These carry no information for RUL prediction and are removed at this stage to reduce noise and downstream computation.
 
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/e4c961b2-02ea-431b-b1c3-37db6b6e90c3" />
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/b280127c-7b00-461b-a382-d956b9ba0280" />
+Output written to the Silver layer as Parquet:
+- Train: 20,631 rows, 19 columns
+- Test: 13,096 rows, 19 columns
 
-#
-7 - To automate the pipeline, we added a triger than automatically runs on a daily basis.
+---
 
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/4142d3ae-a2c7-4094-a769-878e3c2aceae" />
+### 3. Silver → Gold (`02_silver_to_gold`)
 
-#
+The second notebook enriches the silver data with two key transformations:
+
+**RUL Computation:** For each engine, RUL at each cycle is computed as `max_cycle − current_cycle`, giving the ground truth label for how many cycles remain before failure.
+
+**RUL Clipping at 125:** Raw RUL values can be very large for engines that ran a long time. However, turbofan sensors only show measurable degradation in approximately the last 125 cycles. Clipping at 125 implements the standard **piecewise linear degradation assumption** used across C-MAPSS benchmarks — it focuses the model on the degradation phase and ignores the early healthy phase where all sensors look identical regardless of engine health.
+
+**Sensor Normalisation:** All 14 remaining sensor columns and 3 operational setting columns are scaled to [0, 1] using MinMaxScaler. The scaler is fitted on the training set only and then applied to both train and test to prevent data leakage. Normalised columns are written with a `_scaled` suffix.
+
+---
+
+### 4. Gold → tsfresh-Ready (`03_gold_to_features`)
+
+The third notebook prepares the data for tsfresh ingestion by separating feature columns from RUL labels and writing three outputs to the Gold layer:
+
+- `curated/FD001/train_tsfresh_ready` — sensor features for all 20,631 training rows
+- `curated/FD001/test_tsfresh_ready` — sensor features for all 13,096 test rows
+- `curated/FD001/train_rul_labels` — per-cycle RUL labels (`engine_id`, `cycle`, `target_RUL`)
+
+Label statistics confirmed correct computation: mean RUL = 86.83, min = 0, max = 125, stddev = 41.67.
+
+---
+
+## Part II – Azure ML Pipeline
+
+### 5. Repository Structure and Component Setup
+
+The repository was structured to cleanly separate Databricks notebooks, Azure ML components, pipeline definitions, and configuration. Each component lives in its own folder containing its Python script, `component.yml`, and `conda.yml` to keep dependencies isolated and independently versioned. The `.env` file containing Azure credentials is gitignored and a `.env.example` template is committed instead.
+```
+repo/
+├── databricks/
+│   ├── 01_bronze_ingestion.ipynb
+│   ├── 02_silver_to_gold.ipynb
+│   └── 03_gold_to_features.ipynb
+├── components/
+│   ├── extract_features/
+│   │   ├── component.yml
+│   │   ├── conda.yml
+│   │   └── extract_features.py
+│   ├── filter_selection/
+│   │   ├── component.yml
+│   │   ├── conda.yml
+│   │   └── filter_selection.py
+│   ├── genetic_algorithm/
+│   │   ├── component.yml
+│   │   ├── conda.yml
+│   │   └── genetic_algorithm.py
+│   ├── split_dataset/
+│   │   ├── component.yml
+│   │   ├── conda.yml
+│   │   └── split_dataset.py
+│   └── train_evaluate/
+│       ├── component.yml
+│       ├── conda.yml
+│       └── train_evaluate.py
+├── config/config.yaml
+├── data/cmapss_fd001.yml
+├── pipelines/feature_pipeline.yml
+├── .env.example
+└── README.md
+```
+
+The screenshot below shows the component directories being created in PowerShell using `New-Item`:
+
+<img width="940" height="278" alt="image" src="https://github.com/user-attachments/assets/8b91010f-2276-46d0-852b-c07bebad3d2c" />
+
+
+---
+
+### 6. Registering Azure ML Components
+
+Each of the 5 pipeline components was registered in Azure ML using the Azure CLI. Registering components separately from the pipeline means they can be versioned, reused across pipelines, and updated independently. The `code: .` field in each `component.yml` tells Azure ML to upload the local script directory as the component's source code snapshot — without this, Azure ML cannot find the Python script at runtime and throws a `No such file or directory` error.
+
+All `conda.yml` files use `azureml-mlflow` instead of the generic `mlflow` package. The standard `mlflow` package does not understand `azureml://` tracking URIs used natively by Azure ML and raises an `UnsupportedModelRegistryStoreURIException`. Replacing it with `azureml-mlflow` resolves this with no code changes required.
+
+#### extract_features
+
+Registered with inputs for `train_data`, `test_data`, `rul_labels`, `feature_set`, and `n_jobs`, and outputs for `train_features`, `test_features`, and `extraction_metrics`.
+
+<img width="940" height="25" alt="image" src="https://github.com/user-attachments/assets/e0184a92-e107-46c4-8d11-0365edd6db81" />
+
+
+---
+
+#### filter_selection
+
+Registered with configurable thresholds for variance, correlation, and mutual information filtering. The registered command confirms all expected inputs and outputs including `variance_threshold`, `correlation_threshold`, and `mutual_info_percentile`.
+
+<img width="940" height="83" alt="image" src="https://github.com/user-attachments/assets/2259f094-d582-4181-87a6-6a86efd226a1" />
+
+
+---
+
+#### genetic_algorithm
+
+Registered with all DEAP hyperparameters exposed as inputs — `population_size`, `n_generations`, `crossover_prob`, `mutation_prob`, `tournament_size`, and `min_features` — confirming the component is fully configurable without code changes.
+
+<img width="940" height="92" alt="image" src="https://github.com/user-attachments/assets/e21d3754-4dda-4243-8bd4-5af53f727ca0" />
+
+
+---
+
+#### split_dataset
+
+Registered with `test_size` and `random_seed` as configurable inputs to ensure reproducible splits.
+
+<img width="940" height="80" alt="image" src="https://github.com/user-attachments/assets/af305687-b92e-4b2d-a9ec-b2aab165c933" />
+
+
+---
+
+#### train_evaluate
+
+Registered with `model_type`, `n_estimators`, and `max_depth` as configurable inputs, allowing different model types to be tested without modifying any code.
+
+<img width="940" height="86" alt="image" src="https://github.com/user-attachments/assets/c8002fcf-92b7-4b7d-b207-e097ef9269fe" />
+
+
+---
+
+### 7. Pipeline Components — What Each Step Does
+
+#### Extract Features (`extract_features`)
+
+Uses tsfresh to extract statistical time-series features from the sensor data using a **rolling window approach**.
+
+**Why rolling windows?** A naive approach of extracting one feature vector per engine produces only 100 rows and attaches a single RUL label per engine. Due to RUL clipping at 125, nearly all engines get the same label for most of their life, leaving almost no variation for the model to learn from. The rolling window approach extracts one feature vector per `(engine, cycle)` pair using the most recent 30 cycles as the input window, stepped every 5 cycles. This produces ~4,000 rows with properly varying RUL labels from 0 to 125 at each time step.
+
+`MinimalFCParameters` was chosen over `EfficientFCParameters` because the efficient set (~700 features) exceeded 1 hour of runtime on the Standard_DS3_v2 instance, while the minimal set produces comparable accuracy in minutes.
+
+| Parameter | Value |
+|---|---|
+| Feature set | `MinimalFCParameters` |
+| Window size | 30 cycles |
+| Step size | 5 cycles |
+| Output rows (train) | ~4,063 |
+
+---
+
+#### Filter-Based Feature Selection (`filter_selection`)
+
+Three sequential filters reduce the feature space before the expensive genetic algorithm runs. Running filters first shrinks the search space significantly, making the GA faster and reducing the risk of selecting noise features.
+
+| Step | Method | Threshold | Purpose |
+|---|---|---|---|
+| 1 | Variance threshold | < 0.01 | Remove near-constant features |
+| 2 | Correlation filter | > 0.95 | Remove redundant duplicate features |
+| 3 | Mutual information | Bottom 50% | Keep features most informative about RUL |
+
+---
+
+#### Genetic Algorithm Feature Selection (`genetic_algorithm`)
+
+Uses **DEAP** (Distributed Evolutionary Algorithms in Python) to search for the optimal feature subset. Each individual in the population is a binary chromosome where `1` = include feature and `0` = exclude. Fitness is evaluated using 3-fold cross-validated RMSE with a lightweight RandomForest (20 estimators) to balance evaluation speed with accuracy.
+
+The GA is preferred over purely filter-based methods because it can discover **feature combinations** that work well together, not just features that are individually strong.
+
+| Parameter | Value |
+|---|---|
+| Population size | 50 |
+| Generations | 20 |
+| Crossover probability | 0.7 |
+| Mutation probability | 0.2 |
+| Selection | Tournament |
+| Fitness | 3-fold CV RMSE |
+
+---
+
+#### Split Dataset (`split_dataset`)
+
+Splits the GA-selected training features into 80% training and 20% validation with a fixed random seed. The split occurs after all feature selection steps to ensure no validation data influenced which features were selected or how they were extracted.
+
+---
+
+#### Train and Evaluate (`train_evaluate`)
+
+Trains a **RandomForest Regressor** on the training split and evaluates on the validation split. The model is saved as `model.pkl` via joblib, predictions are saved as Parquet and CSV, and all metrics are written to `evaluation_metrics.json`.
+
+| Parameter | Value |
+|---|---|
+| Model | RandomForest |
+| n_estimators | 100 |
+| max_depth | 10 |
+
+---
+
+### 8. Running the Pipeline
+
+All 5 components were wired together in `pipelines/feature_pipeline.yml` and submitted to the Azure ML compute instance `azurecompute60304739` (Standard_DS3_v2). The pipeline runs entirely on Azure ML compute, not locally, and each step's inputs, outputs, and metrics are automatically tracked and versioned in the workspace.
+
+The `name:` field was removed from the pipeline YAML so Azure ML auto-generates a unique run name each submission, avoiding the `A job with this name already exists` error when resubmitting after fixes.
+```powershell
+Get-Content .env | ForEach-Object {
+  if ($_ -match '^([^#][^=]*)=(.*)$') {
+    [System.Environment]::SetEnvironmentVariable($matches[1], $matches[2])
+  }
+}
+
+az ml job create --file pipelines/feature_pipeline.yml `
+  --workspace-name $env:AZURE_WORKSPACE_NAME `
+  --resource-group $env:AZURE_RESOURCE_GROUP `
+  --stream
+```
+
+All 5 components completed successfully as shown below:
+
+<img width="700" height="700" alt="image" src="https://github.com/user-attachments/assets/22cfc750-1448-4aab-882a-9f1d18675fd1" />
+
+
+---
+
+## Part III – Results
+
+### 9. Validation Metrics
+
+| Metric | Train | Validation |
+|---|---|---|
+| RMSE | 9.66 | **14.38** |
+| MAE | 6.51 | **9.85** |
+| R² | 0.9465 | **0.8794** |
+
+A validation R² of 0.88 means the model explains 88% of the variance in RUL — a strong result for a Random Forest with only 6 features and no hyperparameter tuning beyond defaults.
+
+---
+
+### 10. Top Features Selected by Genetic Algorithm
+
+| Rank | Feature | Importance |
+|---|---|---|
+| 1 | `sensor_2_scaled__sum_values` | 65.3% |
+| 2 | `cycle` | 16.0% |
+| 3 | `sensor_4_scaled__maximum` | 8.2% |
+| 4 | `sensor_15_scaled__maximum` | 3.8% |
+| 5 | `sensor_7_scaled__root_mean_square` | 3.7% |
+| 6 | `sensor_3_scaled__absolute_maximum` | 3.1% |
+
+`sensor_2` (total temperature at LPC outlet) and `sensor_4` (total temperature at HPC outlet) are well-established degradation indicators in the C-MAPSS FD001 literature. Their dominance in feature importance confirms the pipeline selected physically meaningful signals rather than noise.
+
+---
+
+### 11. Test Set Predictions
+
+| Statistic | Value |
+|---|---|
+| Mean predicted RUL | 104.43 cycles |
+| Min predicted RUL | 9.55 cycles |
+| Max predicted RUL | 125.00 cycles |
+
+The spread of predictions from ~10 to 125 confirms the model produces meaningful, varied RUL estimates. This was a key failure mode during early development — before the rolling window fix, all predictions were constant at 125 due to incorrect label aggregation.
+
+---
+
+## Summary
+
+| Component | Purpose | Key Output |
+|---|---|---|
+| `extract_features` | Rolling window tsfresh extraction | ~4,063 rows × ~10 features |
+| `filter_selection` | Variance, correlation, MI filters | Reduced feature set |
+| `genetic_algorithm` | DEAP binary GA optimisation | 6 optimal features |
+| `split_dataset` | 80/20 train/validation split | Train and val Parquet |
+| `train_evaluate` | RandomForest training and evaluation | RMSE 14.38, R² 0.88 |
