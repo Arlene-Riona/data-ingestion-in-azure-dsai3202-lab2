@@ -37,7 +37,7 @@ jobs:
       train_data: ${{parent.inputs.train_data}}
       test_data: ${{parent.inputs.test_data}}
       rul_labels: ${{parent.inputs.rul_labels}}
-      feature_set: "MinimalFCParameters"
+      feature_set: "EfficientFCParameters"
       n_jobs: 4
     outputs:
       train_features:
