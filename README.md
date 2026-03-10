@@ -301,6 +301,9 @@ az ml job create --file pipelines/feature_pipeline.yml `
   --stream
 ```
 
+<img width="1598" height="277" alt="image" src="https://github.com/user-attachments/assets/2370360a-8382-45d5-85b4-4d046bb5897a" />
+
+
 All 5 components completed successfully as shown below:
 
 <img width="700" height="700" alt="image" src="https://github.com/user-attachments/assets/22cfc750-1448-4aab-882a-9f1d18675fd1" />
