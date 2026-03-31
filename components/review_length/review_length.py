@@ -49,7 +49,7 @@ def main(input_path: str, output_path: str):
 
     # Only keep keys + new features (NOT the full dataframe)
     # This prevents a memory explosion when merging with other feature outputs
-    out_df = df[KEYS].copy()
+    out_df = df[KEYS + ["overall"]].copy()
     out_df["review_length_chars"] = s.str.len().values
     out_df["review_length_words"] = s.str.split().str.len().values
 
