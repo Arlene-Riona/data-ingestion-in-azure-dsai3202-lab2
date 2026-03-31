@@ -1,0 +1,6 @@
+$schema: https://azuremlschemas.azureedge.net/latest/data.schema.json
+
+name: amazon_review_merged_features_deploy
+version: 1
+type: uri_folder
+path: azureml://datastores/workspaceblobstore/paths/azureml/625dfdd0-c1d4-4f4e-b1ae-6d887a3a4760/out/
