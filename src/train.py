@@ -50,19 +50,15 @@ def build_features(df):
 
     feature_cols = [
         c for c in df.columns
-        if c.startswith("tfidf_")
-        or c.startswith("sbert_")
-        or c.startswith("sentiment_")
-        or c.startswith("length_")
-        or c.startswith("review_length_")
+        if any(prefix in c for prefix in [
+            "tfidf_", "sbert_", "sentiment_", "length_", "review_length_"
+        ])
     ]
 
     if len(feature_cols) == 0:
-        raise RuntimeError("No feature columns found")
+        raise RuntimeError(f"No feature columns found. Available columns: {list(df.columns)}")
 
-    X = df[feature_cols].fillna(0)
-
-    return X
+    return df[feature_cols].fillna(0)
 
 
 # -------------------------

@@ -13,4 +13,5 @@ dependencies:
       - pyarrow
       - mlflow
       - azureml-mlflow
+      - azureml-defaults
       - joblib

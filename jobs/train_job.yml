@@ -29,9 +29,11 @@ inputs:
 outputs:
   model_output:
     type: uri_folder
+    mode: rw_mount
 
 environment:
   image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
   conda_file: ../env/conda.yml
+  name: amazon-review-env
 
 compute: azureml:lab4-cluster-60304739
