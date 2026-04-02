@@ -1,3 +1,4 @@
+'''
 import argparse
 import os
 import pandas as pd
@@ -24,10 +25,6 @@ def downcast(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def make_unique(df: pd.DataFrame, name: str) -> pd.DataFrame:
-    """
-    Ensure KEYS uniquely identify rows.
-    If duplicates exist, keep the last occurrence.
-    """
     before = len(df)
     dup_count = df.duplicated(subset=KEYS).sum()
     if dup_count > 0:
@@ -38,9 +35,14 @@ def make_unique(df: pd.DataFrame, name: str) -> pd.DataFrame:
     return df
 
 
-def prep(df: pd.DataFrame, name: str) -> pd.DataFrame:
+def prep(df: pd.DataFrame, name: str, keep_cols=None) -> pd.DataFrame:
     df = downcast(df)
     df = make_unique(df, name)
+    # If there are extra columns to keep alongside the index, store them separately
+    if keep_cols:
+        extras = df[KEYS + keep_cols].copy()
+        df = df.set_index(KEYS).sort_index()
+        return df, extras
     return df.set_index(KEYS).sort_index()
 
 
@@ -56,18 +58,23 @@ def main():
     os.makedirs(args.out, exist_ok=True)
 
     print("Loading + preparing dataframes...")
-    length_df = prep(read_first_parquet(args.length), "length")
-    sentiment_df = prep(read_first_parquet(args.sentiment), "sentiment")
-    tfidf_df = prep(read_first_parquet(args.tfidf), "tfidf")
-    sbert_df = prep(read_first_parquet(args.sbert), "sbert")
 
-    # Drive merge by length_df rows
+    # Load length df and preserve 'overall' separately
+    length_raw = read_first_parquet(args.length)
+    length_df = prep(length_raw, "length")
+
+    # pull label directly from raw input safely
+    overall_df = length_raw[["asin", "reviewerID", "overall"]].copy()
+
+    sentiment_df = prep(read_first_parquet(args.sentiment), "sentiment")
+    tfidf_df     = prep(read_first_parquet(args.tfidf),     "tfidf")
+    sbert_df     = prep(read_first_parquet(args.sbert),     "sbert")
+
     total = len(length_df)
     print(f"Total rows (length): {total} | chunk size: {CHUNK_SIZE}")
 
     out_file = os.path.join(args.out, "data.parquet")
 
-    # Streaming parquet writer (preferred)
     try:
         import pyarrow as pa
         import pyarrow.parquet as pq
@@ -80,14 +87,16 @@ def main():
             base = length_df.iloc[start:end]
             idx = base.index
 
-            # IMPORTANT: use .loc instead of reindex (because now indices are unique)
             merged = (
                 base
                 .join(sentiment_df.loc[idx], how="inner")
-                .join(sbert_df.loc[idx], how="inner")
-                .join(tfidf_df.loc[idx], how="inner")
+                .join(sbert_df.loc[idx],     how="inner")
+                .join(tfidf_df.loc[idx],     how="inner")
                 .reset_index()
             )
+
+            # Add overall back by merging on KEYS
+            merged = merged.merge(overall_df, on=KEYS, how="left")
 
             merged["timestamp"] = pd.Timestamp("today").normalize()
 
@@ -121,14 +130,17 @@ def main():
             merged = (
                 base
                 .join(sentiment_df.loc[idx], how="inner")
-                .join(sbert_df.loc[idx], how="inner")
-                .join(tfidf_df.loc[idx], how="inner")
+                .join(sbert_df.loc[idx],     how="inner")
+                .join(tfidf_df.loc[idx],     how="inner")
                 .reset_index()
             )
 
+            merged = merged.merge(overall_df, on=KEYS, how="left")
             merged["timestamp"] = pd.Timestamp("today").normalize()
 
-            merged.to_parquet(os.path.join(part_dir, f"part-{part:05d}.parquet"), index=False)
+            merged.to_parquet(
+                os.path.join(part_dir, f"part-{part:05d}.parquet"), index=False
+            )
             print(f"Wrote part {part} | rows {start}..{end} | shape={merged.shape}")
 
             del base, merged
@@ -139,3 +151,115 @@ def main():
 
 if __name__ == "__main__":
     main()
+'''
+import argparse
+import os
+import pandas as pd
+import gc
+
+KEYS = ["asin", "reviewerID"]
+CHUNK_SIZE = 5000 
+
+
+def read_parquet(folder_path):
+    files = [f for f in os.listdir(folder_path) if f.endswith(".parquet")]
+    if not files:
+        raise FileNotFoundError(f"No parquet file in {folder_path}")
+    return pd.read_parquet(os.path.join(folder_path, files[0]))
+
+
+def main(length_path, sentiment_path, tfidf_path, sbert_path, raw_path, output_path):
+
+    print("Loading datasets...")
+
+    length_df = read_parquet(length_path)
+    sentiment_df = read_parquet(sentiment_path)
+    tfidf_df = read_parquet(tfidf_path)
+    sbert_df = read_parquet(sbert_path)
+    raw_df = read_parquet(raw_path)
+
+    # -----------------------
+    # Prepare labels
+    # -----------------------
+    labels_df = raw_df[KEYS + ["overall"]].copy()
+
+    # Set index for fast joins
+    length_df = length_df.set_index(KEYS)
+    sentiment_df = sentiment_df.set_index(KEYS)
+    tfidf_df = tfidf_df.set_index(KEYS)
+    sbert_df = sbert_df.set_index(KEYS)
+    labels_df = labels_df.set_index(KEYS)
+
+    total = len(length_df)
+    print(f"Total rows: {total}")
+
+    os.makedirs(output_path, exist_ok=True)
+    out_file = os.path.join(output_path, "data.parquet")
+
+    parts = []
+    part_id = 0
+
+    # -----------------------
+    # Chunked merge
+    # -----------------------
+    for start in range(0, total, CHUNK_SIZE):
+        end = min(start + CHUNK_SIZE, total)
+
+        base = length_df.iloc[start:end]
+
+        merged = (
+            base
+            .join(sentiment_df, how="inner")
+            .join(tfidf_df, how="inner")
+            .join(sbert_df, how="inner")
+            .join(labels_df, how="left")  # ✅ keeps overall safely
+            .reset_index()
+        )
+
+        if merged.empty:
+            print(f"Chunk {part_id} is empty, skipping...")
+            continue
+
+        parts.append(merged)
+
+        print(f"Processed chunk {part_id} | rows {start}-{end} | shape={merged.shape}")
+
+        del base, merged
+        gc.collect()
+
+        part_id += 1
+
+    # -----------------------
+    # Final save
+    # -----------------------
+    final_df = pd.concat(parts, ignore_index=True)
+
+    if "overall" not in final_df.columns:
+        raise ValueError("overall column missing after merge")
+
+    final_df.to_parquet(out_file, index=False)
+
+    print("✅ Merge successful")
+    print(f"Final shape: {final_df.shape}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--length", required=True)
+    parser.add_argument("--sentiment", required=True)
+    parser.add_argument("--tfidf", required=True)
+    parser.add_argument("--sbert", required=True)
+    parser.add_argument("--raw", required=True)
+    parser.add_argument("--output", required=True)
+
+    args = parser.parse_args()
+
+    main(
+        args.length,
+        args.sentiment,
+        args.tfidf,
+        args.sbert,
+        args.raw,
+        args.output
+    )
