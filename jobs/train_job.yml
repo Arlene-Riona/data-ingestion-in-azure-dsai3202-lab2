@@ -16,15 +16,15 @@ command: >
 inputs:
   train_data:
     type: uri_folder
-    path: azureml:amazon_reviews_train@latest
+    path: azureml:amazon_review_merged_features_train@latest
 
   val_data:
     type: uri_folder
-    path: azureml:amazon_reviews_val@latest
+    path: azureml:amazon_review_merged_features_val@latest
 
   test_data:
     type: uri_folder
-    path: azureml:amazon_reviews_test@latest
+    path: azureml:amazon_review_merged_features_test@latest
 
 outputs:
   model_output:

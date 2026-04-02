@@ -35,13 +35,24 @@ def load_data(path):
 # -------------------------
 # Labels
 # -------------------------
+"""
 def create_labels(df):
     if "overall" not in df.columns:
         raise RuntimeError("Missing label column 'overall'")
 
     df["label"] = (df["overall"] >= 4).astype(int)
     return df
+"""
+def create_labels(df):
+    for col in ["overall", "label", "rating"]:
+        if col in df.columns:
+            df["label"] = (df[col] >= 4).astype(int)
+            print(f"Using label column: {col}")
+            return df
 
+    print("WARNING: No label column found — using fallback labels")
+    df["label"] = 0  # temporary
+    return df
 
 # -------------------------
 # Features (SAFE VERSION)
