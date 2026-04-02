@@ -1,9 +1,10 @@
 import pandas as pd
+import argparse
+import os
 
 def safe_load(path):
     df = pd.read_parquet(path)
     return df.reset_index(drop=True)
-
 
 def main(length_path, sentiment_path, tfidf_path, sbert_path, raw_path, output_path):
 
@@ -17,38 +18,31 @@ def main(length_path, sentiment_path, tfidf_path, sbert_path, raw_path, output_p
     raw_df = safe_load(raw_path)
 
     # -----------------------
-    # Keep only labels early (BIG memory win)
+    # Labels
     # -----------------------
     labels_df = raw_df[["asin", "reviewerID", "overall"]].copy()
-    del raw_df  # free memory immediately
+    del raw_df
 
     # -----------------------
-    # Merge ONLY keys first (reduce explosion risk)
+    # Base keys
     # -----------------------
     base = length_df[["asin", "reviewerID"]].copy()
 
-    # align everything BEFORE merge
     length_df = length_df.drop(columns=["asin", "reviewerID"])
     sentiment_df = sentiment_df.drop(columns=["asin", "reviewerID"])
     tfidf_df = tfidf_df.drop(columns=["asin", "reviewerID"])
     sbert_df = sbert_df.drop(columns=["asin", "reviewerID"])
 
     # -----------------------
-    # MEMORY-EFFICIENT CONCAT (NOT repeated merges)
+    # Merge features
     # -----------------------
     feature_df = pd.concat(
         [base, length_df, sentiment_df, tfidf_df, sbert_df],
         axis=1
     )
 
-    # -----------------------
-    # Attach labels last (small table)
-    # -----------------------
     final_df = feature_df.merge(labels_df, on=["asin", "reviewerID"], how="inner")
 
-    # -----------------------
-    # Safety checks
-    # -----------------------
     if final_df.empty:
         raise ValueError("Final merged dataframe is empty")
 
@@ -56,9 +50,39 @@ def main(length_path, sentiment_path, tfidf_path, sbert_path, raw_path, output_p
         raise ValueError("Missing label column")
 
     # -----------------------
-    # Save output
+    # IMPORTANT: ensure output folder exists
     # -----------------------
-    final_df.to_parquet(output_path, index=False)
+    os.makedirs(output_path, exist_ok=True)
+
+    output_file = os.path.join(output_path, "merged.parquet")
+
+    final_df.to_parquet(output_file, index=False)
 
     print("Merge successful")
     print("Final shape:", final_df.shape)
+    print("Saved to:", output_file)
+
+
+# -----------------------
+# AzureML ENTRY POINT
+# -----------------------
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--length", required=True)
+    parser.add_argument("--sentiment", required=True)
+    parser.add_argument("--tfidf", required=True)
+    parser.add_argument("--sbert", required=True)
+    parser.add_argument("--raw", required=True)
+    parser.add_argument("--output_path", required=True)
+
+    args = parser.parse_args()
+
+    main(
+        args.length,
+        args.sentiment,
+        args.tfidf,
+        args.sbert,
+        args.raw,
+        args.output_path
+    )

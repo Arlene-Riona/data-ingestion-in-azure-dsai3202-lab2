@@ -133,7 +133,7 @@ jobs:
       deploy: ${{parent.jobs.normalize_deploy.outputs.out}}
       max_features: 100
 
-  # MERGE
+  # MERGE (FIXED ALIGNMENT)
   merge_train:
     type: command
     component: azureml:merge_features@latest
