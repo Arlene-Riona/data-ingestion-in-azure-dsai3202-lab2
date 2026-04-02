@@ -44,14 +44,10 @@ def create_labels(df):
     return df
 """
 def create_labels(df):
-    for col in ["overall", "label", "rating"]:
-        if col in df.columns:
-            df["label"] = (df[col] >= 4).astype(int)
-            print(f"Using label column: {col}")
-            return df
+    if "overall" not in df.columns:
+        raise RuntimeError("Missing label column 'overall'")
 
-    print("WARNING: No label column found — using fallback labels")
-    df["label"] = 0  # temporary
+    df["label"] = (df["overall"] >= 4).astype(int)
     return df
 
 # -------------------------
