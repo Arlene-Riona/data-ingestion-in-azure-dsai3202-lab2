@@ -7,7 +7,7 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  AZURE_SUBSCRIPTION: SC-UDST-CCIT-DSAI3202-X
+  AZURE_SUBSCRIPTION: "SC - UDST - CCIT - DSAI3202 - 1"
   RESOURCE_GROUP: rg-60304739
   WORKSPACE_NAME: Amazon-Electronics-Lab-60304739
 
@@ -21,7 +21,10 @@ steps:
     scriptType: bash
     scriptLocation: inlineScript
     inlineScript: |
-      set -e
+      set -ex
+
+      echo "Checking Azure account..."
+      az account show
 
       echo "Installing Azure ML CLI..."
       az extension add -n ml -y || az extension update -n ml
@@ -30,6 +33,10 @@ steps:
       az configure --defaults \
         group=$(RESOURCE_GROUP) \
         workspace=$(WORKSPACE_NAME)
+
+      echo "Current directory:"
+      pwd
+      ls -R
 
       echo "Submitting job..."
       JOB_NAME=$(az ml job create --file jobs/train_job.yml --query name -o tsv)
