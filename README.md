@@ -303,8 +303,4 @@ MLflow tracks the following per run:
 
 > **What is one thing being done "not correctly" in this assignment?**
 
-The dataset is split into four partitions first, and then each split is passed through the feature engineering pipeline independently — which sounds correct but isn't. The problem lies with **TF-IDF**: it is a learned transformation that gets **fit separately on each split**, meaning the vocabulary and IDF weights for the validation, test, and deployment sets are shaped by their own data. This constitutes **data leakage in the feature space**.
-
-The correct approach is to fit the TF-IDF vectorizer **exclusively on the training set**, then apply it in transform-only mode to all other splits. This ensures that the feature representation of held-out data is derived purely from training distribution knowledge — which is what a deployed model would actually see in production.
-
-SBERT is not affected by this issue since it is a pretrained model and no fitting occurs on the project data. However, any other learned transformations such as scalers would carry the same problem as TF-IDF.
+In the assignment, during the hyperparameter sweep, the test set is evaluated and its metrics are logged during every single training run, including every child run in the hyperparameter sweep. Here the test set is repeated exposure to test metrics which violates the holdout principle as seeing the test set performance across every trial can influence decisions about which configurations to select, which features to include, or which model to use, making the final reported test accuracy optimistically biased and no longer a reliable estimate of true generalization performance. The correct approach would be to remove test set evaluation from the training script entirely during the experimentation phase, evaluate it only once after the best model has been selected based solely on validation metrics.
