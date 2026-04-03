@@ -1,4 +1,4 @@
-# Assignment 2 - Model Training & Automation with Azure 
+# Assignment 2 - Model Training & Automation with Azure
 
 > End-to-end MLOps pipeline for Amazon review sentiment classification using Azure Machine Learning, MLflow, Scikit-learn, and Azure DevOps CI/CD.
 
@@ -66,7 +66,7 @@ The dataset consists of Amazon product reviews with text fields and associated s
 - Review text
 - Metadata (length, word count, etc.)
 - Engineered NLP embeddings and statistical features
-- Sentiment label (positive/negative or multi-class depending on configuration)
+- Sentiment label derived from the `overall` rating column
 
 ### Feature Engineering Pipeline
 
@@ -81,15 +81,22 @@ Raw text is transformed into ML-ready features using:
 
 These features are combined into a unified feature matrix used for model training.
 
-### Train–Validation–Test Split
+### Dataset Split Strategy
 
-The dataset is split into three sets:
+This assignment introduced a four-way dataset partition, replacing the original three-split approach from Lab 4. The updated split strategy is:
 
-- **Training set** – model learning
-- **Validation set** – hyperparameter tuning and sweep optimization
-- **Test set** – final evaluation
+| Split | Proportion | Purpose |
+|---|---|---|
+| **Train** | 60% | What the model actually learns from |
+| **Validation** | 15% | Hyperparameter tuning and experiment comparison |
+| **Test (Holdout)** | 15% | Final, unbiased offline evaluation |
+| **Deployment** | 10% | Simulates incoming production data post-deployment |
 
-A fixed random seed ensures reproducibility across runs.
+The deployment split is sourced from the most recent time period in the dataset (based on `review_year`), intentionally reflecting potential data drift relative to the training distribution. This design mirrors real-world production conditions where language evolves, products change, and review behavior shifts over time.
+
+Each split was passed through the full feature engineering pipeline so that all four datasets contain the same engineered features: SBERT embeddings, TF-IDF vectors, sentiment scores, length statistics, and the `overall` label column.
+
+<img width="1857" height="378" alt="image" src="https://github.com/user-attachments/assets/706a1751-0f3a-4c78-8fd0-d9ade3b6114a" />
 
 ---
 
@@ -97,7 +104,7 @@ A fixed random seed ensures reproducibility across runs.
 
 ### Model Selection
 
-A **Logistic Regression** classifier is used as the baseline model due to:
+A **Logistic Regression** classifier is used as the primary model due to:
 
 - Efficiency on high-dimensional sparse data (TF-IDF)
 - Strong performance on text classification tasks
@@ -111,19 +118,24 @@ The training pipeline performs the following steps:
 1. Loads processed feature datasets from Azure ML datastore
 2. Combines all feature sources into a single matrix
 3. Trains a Logistic Regression model
-4. Evaluates performance on validation and test sets
+4. Evaluates performance on training, validation, and test sets
 5. Logs metrics and artifacts to MLflow
 
-**Metrics tracked:** Accuracy, Precision, Recall, F1-score
+### MLflow Metric Logging
 
-### MLflow Experiment Tracking
+All training runs are tracked using MLflow integrated with Azure ML. The following metrics are logged per run:
 
-All training runs are tracked using MLflow integrated with Azure ML, enabling:
+| Metric | Train | Validation | Test |
+|---|---|---|---|
+| Accuracy | 0.8484 | 0.8404 | 0.8422 |
+| AUC | 0.8499 | 0.8154 | 0.8182 |
+| F1 Score | 0.9101 | 0.9060 | 0.9073 |
+| Precision | 0.8681 | 0.8618 | 0.8633 |
+| Recall | 0.9564 | 0.9550 | 0.9561 |
 
-- Comparison of multiple runs
-- Logging of hyperparameters (`C`, `max_iter`)
-- Model artifact storage
-- Reproducibility of experiments
+Total pipeline runtime was also logged via MLflow: **70.18 seconds**.
+
+In addition to metrics, the hyperparameters (`C`, `max_iter`) used per run are logged, enabling full reproducibility and comparison across experiments.
 
 ---
 
@@ -133,14 +145,23 @@ All training runs are tracked using MLflow integrated with Azure ML, enabling:
 
 The project follows a modular Azure ML pipeline design where each stage is isolated to ensure independent execution, easy debugging, and reusability across experiments.
 
+### Feature Engineering Pipeline (Lab 4 — Re-run)
+
+Lab 4 was revisited to introduce the deployment split and to ensure all four dataset partitions contain the full set of engineered features and the `overall` label column. The primary aim of re-running Lab 4 was to produce the new deployment split; the `overall` label fix was a side effect of correcting the feature pipeline output. All four merged datasets were registered as versioned Azure ML Data Assets:
+
+- `amazon_review_merged_features_train`
+- `amazon_review_merged_features_val`
+- `amazon_review_merged_features_test`
+- `amazon_review_merged_features_deploy`
+
 ### Training Job Submission
 
 The training job is submitted to Azure ML using a CLI-driven job definition (`train_job.yml`). This job:
 
-- Runs on Azure compute cluster
-- Executes `train.py`
+- Runs on an Azure ML CPU compute cluster
+- Executes `train.py` with explicit `--resource-group` and `--workspace-name` flags
 - Logs outputs to MLflow
-- Stores trained model as `model.pkl`
+- Stores the trained model as `model.pkl`
 
 ### Hyperparameter Sweep
 
@@ -151,10 +172,7 @@ A sweep job (`sweep_job.yml`) optimizes model performance by tuning:
 | `C` | Regularization strength |
 | `max_iter` | Maximum iterations |
 
-The sweep uses:
-- Random sampling strategy
-- Accuracy as the optimization metric
-- Multiple concurrent trials for efficiency
+The sweep uses a random sampling strategy, optimizes for validation accuracy, and runs multiple concurrent trials. The best configuration identified by the sweep was applied as the default in the final training run.
 
 ---
 
@@ -166,7 +184,7 @@ The deployed model uses a custom scoring script that:
 
 - Loads the trained model from Azure ML model registry
 - Accepts JSON input via REST API
-- Performs batch prediction
+- Performs batch prediction using the same feature construction logic as training
 - Returns sentiment predictions as JSON output
 
 ### Inference Endpoint
@@ -174,31 +192,26 @@ The deployed model uses a custom scoring script that:
 The trained model is deployed as a **Managed Online Endpoint** on Azure ML with:
 
 - REST API access
-- Scalable compute instance
+- Scalable compute instance (`Standard_F2s_v2`)
 - Real-time prediction support
 - Secure authentication via API keys
 
 ### Endpoint Testing (`invoke_endpoint.py`)
 
-A Python-based client script verifies end-to-end deployment:
-```python
-# Loads sample input data
-# Sends HTTP POST request to endpoint
-# Receives and prints predictions
-```
+A Python-based client script verifies end-to-end deployment by loading the deployment dataset (the 10% production-simulation split), constructing the feature matrix, sending HTTP POST requests to the endpoint, and computing evaluation metrics against the true labels.
 
 ---
 
 ## Part V – CI/CD with Azure DevOps
 
-A CI/CD pipeline (`azure-pipelines.yml`) automates the full training workflow. On every push to the repository:
+A CI/CD pipeline (`azure-pipelines.yml`) automates the full training workflow on every push to the `assignment2_model_training` branch. The pipeline:
 
-1. Azure CLI installs ML extension
-2. Workspace and resource group are configured
-3. Training job is submitted automatically
-4. Logs are streamed in real time
+1. Installs the Azure ML CLI extension
+2. Authenticates with Azure via the `SC-UDST-CCIT-DSAI3202` service connection
+3. Submits the training job with explicit `--resource-group` and `--workspace-name` flags passed directly to the `az ml` commands
+4. Streams job logs in real time
 
-This ensures continuous training, reproducibility, and full automation of the ML workflow.
+The DevOps pipeline configuration encountered a service connection issue during setup, which was resolved by ensuring the service connection name in the YAML matched exactly the name registered in Azure DevOps Project Settings, and by passing resource group and workspace parameters explicitly rather than relying on `az configure --defaults`, which does not propagate reliably to the `ml` CLI extension.
 
 ---
 
@@ -206,91 +219,83 @@ This ensures continuous training, reproducibility, and full automation of the ML
 
 ### Model Performance
 
-| Metric | Result |
-|---|---|
-| Accuracy | High (validated on test set) |
-| Precision | Strong class separation |
-| Recall | Balanced across sentiment classes |
-| F1-score | Consistent across folds |
+| Metric | Train | Validation | Test |
+|---|---|---|---|
+| Accuracy | 0.8484 | 0.8404 | 0.8422 |
+| AUC | 0.8499 | 0.8154 | 0.8182 |
+| F1 Score | 0.9101 | 0.9060 | 0.9073 |
+| Precision | 0.8681 | 0.8618 | 0.8633 |
+| Recall | 0.9564 | 0.9550 | 0.9561 |
+
+**Pipeline runtime:** 70.18 seconds
 
 ### Key Observations
 
 - TF-IDF captures strong surface-level sentiment indicators
 - SBERT embeddings improve semantic generalization
-- Logistic Regression performs well despite its simplicity
-- Hyperparameter tuning provides marginal but consistent gains
-- CI/CD pipeline ensures reproducible training on every commit
+- Logistic Regression performs well despite its simplicity, with consistent metrics across all splits
+- The close alignment between validation and test scores indicates good generalization without overfitting
+- Hyperparameter tuning via sweep jobs provided consistent marginal improvements
+- The deployment split, sourced from the most recent reviews, enables observation of potential data drift in production
 
 ---
 
 ## Part VII – Challenges & Solutions
 
-### Data Inconsistencies in Label Propagation
+### Introducing the Deployment Split (Lab 4 Re-run)
 
-The pipeline initially failed because the expected label column (`overall`) was missing after feature merging. A temporary fallback mechanism was introduced to allow pipeline execution while isolating the root cause.
+The original Lab 4 pipeline only produced three dataset splits. To meet the updated requirements, the splitting logic was revised to produce a fourth deployment split (10%), drawn from the most recent reviews by `review_year`. The full feature engineering pipeline was then re-run so that all four splits contain identical feature columns and the `overall` label.
 
-**Final fix:** Ensuring correct label alignment at the feature merging stage so that sentiment labels are preserved consistently across all splits.
+### `overall` Label Preservation
+
+Some pipeline configurations had accidentally dropped the `overall` rating column during feature merging, which caused the training script to fail at label creation. This was resolved by ensuring the merge logic explicitly preserved the label column across all dataset splits.
 
 ### Feature Integration Complexity
 
-Combining TF-IDF, SBERT embeddings, and statistical features resulted in high-dimensional matrices requiring careful index alignment. Resolved by:
+Combining TF-IDF, SBERT embeddings, and statistical features resulted in high-dimensional matrices requiring careful index alignment. This was resolved by ensuring consistent indexing before concatenation, standardizing feature outputs as NumPy arrays, and validating shape consistency before model training.
 
-- Ensuring consistent indexing before concatenation
-- Standardizing feature outputs as NumPy arrays / DataFrames
-- Validating shape consistency before model training
+### Azure ML CLI and `az configure --defaults`
 
-### Azure ML Job Debugging & Execution Delays
+The `az configure --defaults` command does not reliably propagate to the `az ml` CLI extension, causing job submissions to fail with a missing `--resource-group` argument error. The fix was to pass `--resource-group` and `--workspace-name` explicitly on every `az ml` command rather than relying on global defaults.
 
-Job submission failures occurred due to incorrect dataset asset references, missing environment dependencies, and CLI extension version mismatches. Resolved by:
+### MLflow Tracking Configuration
 
-- Standardizing dataset naming conventions
-- Locking environment dependencies in `conda.yml`
-- Updating the Azure ML CLI extension before job submission
-
-### MLflow Tracking Configuration Issues
-
-Initial MLflow runs failed due to incompatible tracking URIs when using standard `mlflow` instead of `azureml-mlflow`.
-
-**Fix:** Switched to `azureml-mlflow` for Azure-native tracking support, ensuring seamless experiment logging and model registry integration.
+Initial MLflow runs failed due to incompatible tracking URIs when using the standard `mlflow` package instead of `azureml-mlflow`. Switching to `azureml-mlflow` resolved the issue, enabling seamless experiment logging and model registry integration with Azure ML.
 
 ---
 
 ## Part VIII – Versioning & Best Practices
 
-### Code & Experiment Versioning
+### Branch Strategy
 
-- **Git-based version control** for all source code, configuration files, and pipeline definitions
-- Semantic commit messages (`feat`, `fix`, `chore`) for full traceability
-- Separate commits maintained for: training logic, pipeline config, environment updates, and deployment scripts
+Rather than modifying the original Lab 4 branch directly, a dedicated branch was created from it for the required changes. This preserved the original pipeline state and kept modifications isolated and traceable — a standard practice for production ML workflows where changes to upstream pipeline stages need to be auditable.
+
+### Commit Message Conventions
+
+Commits followed semantic prefixes throughout the project (`feat`, `fix`, `chore`) to maintain full traceability across training logic changes, pipeline configuration updates, environment definition changes, and deployment scripts. This makes the history readable and clearly separates concern areas at a glance.
 
 ### Data & Model Versioning
 
-- Azure ML dataset versioning tracks different stages of processed data
-- Each dataset (train/validation/test) registered as a versioned Azure ML asset
-- Models stored in the **Azure ML Model Registry** for version tracking, rollback, and run comparison
+- Azure ML dataset versioning tracks different stages of processed data across pipeline re-runs
+- Each dataset (train/validation/test/deploy) is registered as a versioned Azure ML asset using `azureml:<asset_name>@latest`
+- Models are stored in the **Azure ML Model Registry** for version tracking, rollback capability, and run comparison
 
 ### Experiment Tracking (MLflow)
 
-MLflow tracks all of the following per run:
+MLflow tracks the following per run:
 
 - Hyperparameters (`C`, `max_iter`)
-- Performance metrics (accuracy, F1-score, etc.)
-- Model artifacts (`model.pkl`)
-- Run-level metadata
-
-### CI/CD Best Practices
-
-- Automated training triggered on every commit — no manual intervention required
-- Azure CLI used for reproducible job execution
-- Environment isolation for consistent runtime behavior
+- Performance metrics (accuracy, AUC, F1, precision, recall) across all splits
+- Model artifact (`model.pkl`)
+- Total pipeline runtime
 
 ### General MLOps Best Practices
 
-- Modular pipeline design (separation of training, preprocessing, deployment)
-- Environment isolation using Conda YAML files
+- Modular pipeline design with clear separation between feature engineering, training, and deployment
+- Separate conda environments for training (`conda.yml`) and inference (`inference_conda.yml`), keeping each minimal to reduce Docker build time
 - Reproducible experiments using fixed random seeds
-- Strict train/validation/test separation to avoid data leakage
-- Logging and monitoring via MLflow integration
+- Strict train/validation/test/deployment separation to minimize data leakage
+- CI/CD automation ensures every push to the trigger branch results in a reproducible training run with no manual intervention
 
 ---
 
@@ -298,16 +303,8 @@ MLflow tracks all of the following per run:
 
 > **What is one thing being done "not correctly" in this assignment?**
 
-Feature engineering (TF-IDF / SBERT / transformations) is performed **before** splitting the dataset into training and testing sets, which leads to **data leakage**. The correct approach is to fit all transformers exclusively on the training set and apply them to the validation/test sets only at inference time.
+The dataset is split into four partitions first, and then each split is passed through the feature engineering pipeline independently — which sounds correct but isn't. The problem lies with **TF-IDF**: it is a learned transformation that gets **fit separately on each split**, meaning the vocabulary and IDF weights for the validation, test, and deployment sets are shaped by their own data. This constitutes **data leakage in the feature space**.
 
----
+The correct approach is to fit the TF-IDF vectorizer **exclusively on the training set**, then apply it in transform-only mode to all other splits. This ensures that the feature representation of held-out data is derived purely from training distribution knowledge — which is what a deployed model would actually see in production.
 
-## Component Summary
-
-| Component | Purpose | Output |
-|---|---|---|
-| `train.py` | Model training | Logistic Regression model |
-| `sweep_job.yml` | Hyperparameter tuning | Best `C` and `max_iter` |
-| `score.py` | Inference logic | REST API predictions |
-| `deployment.yml` | Model deployment | Managed endpoint |
-| `azure-pipelines.yml` | CI/CD automation | Auto training pipeline |
+SBERT is not affected by this issue since it is a pretrained model and no fitting occurs on the project data. However, any other learned transformations such as scalers would carry the same problem as TF-IDF.
