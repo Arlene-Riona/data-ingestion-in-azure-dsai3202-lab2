@@ -18,7 +18,8 @@ steps:
     displayName: "Submit Azure ML Training Job"
     inputs:
       azureSubscription: $(AZURE_SUBSCRIPTION)
-      scriptType: bash   scriptLocation: inlineScript
+      scriptType: bash
+      scriptLocation: inlineScript
       inlineScript: |
         set -e
 
