@@ -18,6 +18,8 @@ def parse_args():
     parser.add_argument("--val_data", type=str, required=True)
     parser.add_argument("--test_data", type=str, required=True)
     parser.add_argument("--output", type=str, required=True)
+    parser.add_argument("--C", type=float, default=1.0)
+    parser.add_argument("--max_iter", type=int, default=200)
     return parser.parse_args()
 
 
@@ -116,9 +118,14 @@ def main():
 
     X_test = build_features(test_df)
     y_test = test_df["label"]
+    mlflow.log_param("C", args.C)
+    mlflow.log_param("max_iter", args.max_iter)
 
     print("Training model...")
-    model = LogisticRegression(max_iter=200)
+    model = LogisticRegression(
+        C=args.C,
+        max_iter=args.max_iter,
+        solver="liblinear")
     model.fit(X_train, y_train)
 
     print("Evaluating...")
