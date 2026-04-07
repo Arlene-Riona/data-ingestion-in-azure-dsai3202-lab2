@@ -1,6 +1,7 @@
 import json
 import os
 import joblib
+import pandas as pd
 
 model = None
 
