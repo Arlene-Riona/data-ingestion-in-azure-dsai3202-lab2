@@ -37,14 +37,6 @@ def load_data(path):
 # -------------------------
 # Labels
 # -------------------------
-"""
-def create_labels(df):
-    if "overall" not in df.columns:
-        raise RuntimeError("Missing label column 'overall'")
-
-    df["label"] = (df["overall"] >= 4).astype(int)
-    return df
-"""
 def create_labels(df):
     if "overall" not in df.columns:
         raise RuntimeError("Missing label column 'overall'")
@@ -59,13 +51,11 @@ def build_features(df):
 
     feature_cols = [
         c for c in df.columns
-        if any(prefix in c for prefix in [
-            "tfidf_", "sbert_", "sentiment_", "length_", "review_length_"
-        ])
+        if "sbert_" in c
     ]
 
     if len(feature_cols) == 0:
-        raise RuntimeError(f"No feature columns found. Available columns: {list(df.columns)}")
+        raise RuntimeError(f"No SBERT features found. Columns: {list(df.columns)}")
 
     return df[feature_cols].fillna(0)
 
