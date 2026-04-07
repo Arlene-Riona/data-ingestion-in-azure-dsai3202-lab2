@@ -248,6 +248,30 @@ The DevOps pipeline configuration encountered a service connection issue during 
 
 ---
 
+## Feature Experiments
+
+To evaluate how different feature representations impact model performance, three experimental configurations were tested by modifying the feature selection logic in `train.py`.
+
+| Run | Feature Set |
+|---|---|
+| **Run 1** | SBERT embeddings only |
+| **Run 2** | SBERT + TF-IDF |
+| **Run 3** | All features (SBERT + TF-IDF + sentiment + length features) |
+
+Each configuration was executed through the Azure DevOps CI/CD pipeline, with results tracked in Azure ML Studio under the same experiment.
+
+### Observations
+
+- **SBERT only** captured semantic meaning but lacked surface-level lexical signals, resulting in slightly lower performance  
+- **SBERT + TF-IDF** improved results by combining semantic and word-frequency-based features  
+- **All features** achieved the best performance by incorporating sentiment scores and structural review features in addition to embeddings  
+
+### Conclusion
+
+The **full feature configuration** (SBERT + TF-IDF + sentiment + length features) was selected as the final model input, as it provided the best overall performance and generalization across validation and test datasets.
+
+---
+
 ## Part VII – Challenges & Solutions
 
 ### Introducing the Deployment Split (Lab 4 Re-run)
