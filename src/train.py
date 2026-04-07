@@ -51,11 +51,11 @@ def build_features(df):
 
     feature_cols = [
         c for c in df.columns
-        if "sbert_" in c
+        if ("sbert_" in c or "tfidf_" in c)
     ]
 
     if len(feature_cols) == 0:
-        raise RuntimeError(f"No SBERT features found. Columns: {list(df.columns)}")
+        raise RuntimeError(f"No SBERT/TF-IDF features found. Columns: {list(df.columns)}")
 
     return df[feature_cols].fillna(0)
 
