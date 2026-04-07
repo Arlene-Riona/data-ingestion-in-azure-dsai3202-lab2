@@ -174,6 +174,8 @@ A sweep job (`sweep_job.yml`) optimizes model performance by tuning:
 
 The sweep uses a random sampling strategy, optimizes for validation accuracy, and runs multiple concurrent trials. The best configuration identified by the sweep was applied as the default in the final training run.
 
+<img width="1800" height="345" alt="image" src="https://github.com/user-attachments/assets/a613d0cf-dd21-4062-abb8-749a6d4c803d" />
+
 ---
 
 ## Part IV – Model Deployment
@@ -200,6 +202,10 @@ The trained model is deployed as a **Managed Online Endpoint** on Azure ML with:
 
 A Python-based client script verifies end-to-end deployment by loading the deployment dataset (the 10% production-simulation split), constructing the feature matrix, sending HTTP POST requests to the endpoint, and computing evaluation metrics against the true labels.
 
+<img width="940" height="249" alt="image" src="https://github.com/user-attachments/assets/c0b97490-d94d-4bf4-8c74-ba9507f1e245" />
+
+<img width="940" height="700" alt="image" src="https://github.com/user-attachments/assets/007b7ec7-e552-41b3-b9af-d29c74708c35" />
+
 ---
 
 ## Part V – CI/CD with Azure DevOps
@@ -212,6 +218,8 @@ A CI/CD pipeline (`azure-pipelines.yml`) automates the full training workflow on
 4. Streams job logs in real time
 
 The DevOps pipeline configuration encountered a service connection issue during setup, which was resolved by ensuring the service connection name in the YAML matched exactly the name registered in Azure DevOps Project Settings, and by passing resource group and workspace parameters explicitly rather than relying on `az configure --defaults`, which does not propagate reliably to the `ml` CLI extension.
+
+<img width="1152" height="658" alt="image" src="https://github.com/user-attachments/assets/5006704c-1e9f-4d24-98f2-f7095e49ac97" />
 
 ---
 
