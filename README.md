@@ -174,7 +174,7 @@ A sweep job (`sweep_job.yml`) optimizes model performance by tuning:
 
 The sweep uses a random sampling strategy, optimizes for validation accuracy, and runs multiple concurrent trials. The best configuration identified by the sweep was applied as the default in the final training run.
 
-<img width="1800" height="345" alt="image" src="https://github.com/user-attachments/assets/a613d0cf-dd21-4062-abb8-749a6d4c803d" />
+<img width="1807" height="370" alt="image" src="https://github.com/user-attachments/assets/8587ba7a-bf2a-4bfc-a74c-7c33d337776a" />
 
 ---
 
