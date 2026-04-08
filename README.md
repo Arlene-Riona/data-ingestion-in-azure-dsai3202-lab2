@@ -137,6 +137,17 @@ Total pipeline runtime was also logged via MLflow: **70.18 seconds**.
 
 In addition to metrics, the hyperparameters (`C`, `max_iter`) used per run are logged, enabling full reproducibility and comparison across experiments.
 
+### Justification of Model Choice
+
+Logistic Regression was selected as the final model due to its strong performance on high-dimensional text data and its efficiency in handling sparse feature representations such as TF-IDF vectors. Compared to more complex models, it provides:
+
+- Fast training and inference times
+- Robust performance with minimal tuning
+- Interpretability through feature weights
+- Stability in production environments
+
+Given the combination of dense (SBERT) and sparse (TF-IDF) features, Logistic Regression offered the best trade-off between performance and computational efficiency for this task.
+
 ---
 
 ## Part III – Azure ML Pipeline Architecture
@@ -174,11 +185,32 @@ A sweep job (`sweep_job.yml`) optimizes model performance by tuning:
 
 The sweep uses a random sampling strategy, optimizes for validation accuracy, and runs multiple concurrent trials. The best configuration identified by the sweep was applied as the default in the final training run.
 
+The best configuration identified by the sweep was:
+
+- **C = 0.3213738590686788**
+- **max_iter = 100**
+
+This configuration achieved the highest validation accuracy and was used in the final training run.
+
 <img width="1807" height="370" alt="image" src="https://github.com/user-attachments/assets/8587ba7a-bf2a-4bfc-a74c-7c33d337776a" />
 
 ---
 
 ## Part IV – Model Deployment
+
+### Model Registration
+
+After the final training run using the optimal hyperparameters, the trained model artifact (`model.pkl`) was registered in the Azure ML Model Registry.
+
+Model registration enables:
+
+- Versioning of trained models
+- Traceability to the exact training run and hyperparameters
+- Reusability for deployment and future experiments
+
+<img width="940" height="463" alt="image" src="https://github.com/user-attachments/assets/67eb90af-b07f-4fbd-bf39-78077f031bb9" />
+
+<img width="940" height="420" alt="image" src="https://github.com/user-attachments/assets/00196df8-c386-4b6a-870c-10d447ac5377" />
 
 ### Scoring Script (`score.py`)
 
